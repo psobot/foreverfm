@@ -1,0 +1,6 @@
+*cache/*
+log.txt
+log.txt*
+*.mp3
+*.pyc
+
