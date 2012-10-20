@@ -6,9 +6,10 @@ import tornado.template
 import tornadio2.server
 import threading
 import logging
+from Queue import Empty
 from random import shuffle
-
-import cStringIO
+from lame import Lame
+import multiprocessing
 import soundcloud
 client = soundcloud.Client(client_id="6325e96fcef18547e6552c23b4c0788c")
 
@@ -45,7 +46,9 @@ class StreamHandler(tornado.web.RequestHandler):
                 listener.write(frame)
                 listener.flush()
             sent = time.time()
-            log.info("Time between MP3 packets: %fs", (sent - cls.last_send))
+            delay = sent - cls.last_send
+            if True or delay > 0.15:
+                log.warning("Time between MP3 packets: %fs", delay)
             cls.last_send = sent
 
     @tornado.web.asynchronous
@@ -73,38 +76,47 @@ def start():
 
             # Main stream
             (r"/stream.mp3", StreamHandler)]),
-        socket_io_port=8192,
+        socket_io_port=8193,
         enabled_protocols=['websocket', 'xhr-multipart', 'xhr-polling', 'jsonp-polling']
     )
 
-    application.listen(8888)
+    application.listen(8192)
     tornadio2.server.SocketServer(application)
 
 
 def add_tracks():
-    m = Mixer(queue=queue, callback=StreamHandler.on_new_frame)
+    track_queue = multiprocessing.Queue(1)
+    pcm_queue = multiprocessing.Queue()
+
+    encoder = Lame(StreamHandler.on_new_frame, oqueue=queue)
+    encoder.start()
+    sent = 0
+
+    m = Mixer(inqueue=track_queue, outqueue=pcm_queue)
     m.start()
+
+    audio_buffer = []
     try:
         for i in xrange(0, 10):
-            tracks = filter(good_track, client.get('/tracks', order='hotness', limit=10, offset=i))
+            tracks = filter(good_track, client.get('/tracks', order='hotness', limit=20, offset=i))
             shuffle(tracks)
             for track in tracks:
-                if m.stopped:
-                    log.info("Processing thread dead - stopping")
-                    raise RuntimeError()
-                if len(m.tracks) < prime_limit:
-                    log.info("Not waiting for ready - filling track buffer up to %d", prime_limit)
-                else:
-                    log.info("Waiting for ready...")
-                    m.ready.acquire()
                 log.info("Grabbing stream of %s", track.title)
-                stream = cStringIO.StringIO(client.get(track.stream_url).raw_data)
+                stream = client.get(track.stream_url).raw_data
                 log.info("Adding new track.")
-                m.add_track(stream, track)
-
+                track_queue.put((stream, track.obj))
+                sent += 1
+                log.info("Added new track.")
+                if sent < 2:
+                    continue
+                if len(audio_buffer) > 1:
+                    log.info("Encoding...")
+                    encoder.add_pcm(audio_buffer.pop(0))
+                    log.info("Encoded!")
+                log.info("Waiting for PCM...")
+                audio_buffer.append(pcm_queue.get())
     finally:
         pass
-        #m.stop()
 
 if __name__ == "__main__":
     start()

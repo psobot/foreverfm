@@ -2,7 +2,8 @@ import subprocess
 import threading
 import time
 
-BUF_LEN = 10  # seconds
+BUF_LEN = 30  # seconds
+BUFFER_INCREMENT = 1  # seconds
 
 
 class Lame(threading.Thread):
@@ -38,7 +39,12 @@ class Lame(threading.Thread):
             return False
         try:
             while len(data):
-                if self.buffered >= BUF_LEN:
+                if len(data) < BUF_LEN * self.samplerate:
+                    chunk = data.tostring()
+                    self.buffered += len(chunk) / (1.0 * self.pcm_datarate)
+                    self.lame.stdin.write(chunk)
+                    break
+                elif self.buffered >= BUF_LEN:
                     self.ready.acquire()
                 s = BUF_LEN * self.samplerate
                 chunk = data[:s].tostring()
