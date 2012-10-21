@@ -23,6 +23,9 @@ import time
 import logging
 import cStringIO
 
+import soundcloud
+client = soundcloud.Client(client_id="6325e96fcef18547e6552c23b4c0788c")
+
 logging.basicConfig(format="%(asctime)s P%(process)-5d (%(levelname)8s) %(module)16s%(lineno)5d: %(uid)32s %(message)s")
 log = logging.getLogger(__name__)
 
@@ -65,7 +68,7 @@ class Mixer(multiprocessing.Process):
     def current_track(self):
         return self.tracks[0]
 
-    def analyze(self, x, metadata):
+    def analyze(self, x):
         if isinstance(x, list):
             return [self.analyze(y) for y in x]
         if isinstance(x, LocalAudioFile):
@@ -73,13 +76,14 @@ class Mixer(multiprocessing.Process):
         if isinstance(x, tuple):
             return self.analyze(*x)
 
-        laf = LocalAudioFile(cStringIO.StringIO(x), type="mp3")
-        setattr(laf, "_metadata", metadata)
+        log.info("Grabbing stream of %s", x['title'])
+        laf = LocalAudioFile(cStringIO.StringIO(client.get(x['stream_url']).raw_data), type='mp3')
+        setattr(laf, "_metadata", x)
         return self.process(laf)  # TODO: Fix MP3 const
 
-    def add_track(self, track, metadata):
-        log.info("ADDING TRACK IN BACKEND: %s", metadata['title'])
-        self.tracks.append(self.analyze(track, metadata))
+    def add_track(self, track):
+        log.info("ADDING TRACK IN BACKEND: %s", track['title'])
+        self.tracks.append(self.analyze(track))
 
     def add_tracks(self, tracks):
         self.tracks += order_tracks(self.analyze(tracks))
@@ -107,7 +111,7 @@ class Mixer(multiprocessing.Process):
     def loop(self):
         while len(self.tracks) < 2:
             log.info("Waiting for a new track.")
-            self.add_track(*self.inqueue.get())  # TODO: Extend me to allow multiple tracks.
+            self.add_track(self.inqueue.get())  # TODO: Extend me to allow multiple tracks.
             log.info("Got a new track.")
 
         # Initial transition. Should contain 2 instructions: fadein, and playback.
@@ -125,7 +129,7 @@ class Mixer(multiprocessing.Process):
                                       self.transition_time)
                 self.tracks = self.tracks[1:]
             log.info("Waiting for a new track.")
-            self.add_track(*self.inqueue.get())  # TODO: Extend me to allow multiple tracks.
+            self.add_track(self.inqueue.get())  # TODO: Extend me to allow multiple tracks.
             log.info("Got a new track.")
 
         # Last chunk. Should contain 1 instruction: fadeout.

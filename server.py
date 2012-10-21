@@ -6,7 +6,6 @@ import tornado.template
 import tornadio2.server
 import threading
 import logging
-from Queue import Empty
 from random import shuffle
 from lame import Lame
 import multiprocessing
@@ -14,8 +13,6 @@ import soundcloud
 client = soundcloud.Client(client_id="6325e96fcef18547e6552c23b4c0788c")
 
 prime_limit = 2
-
-import time
 
 
 def good_track(track):
@@ -32,32 +29,37 @@ log = logging.getLogger(__name__)
 class StreamHandler(tornado.web.RequestHandler):
     listeners = []
     frame = None
-    last_send = time.time()
+    last_send = None
 
     @classmethod
     def on_new_frame(cls, *args, **kwargs):
+        #cls.stream_frames(*args, **kwargs)
         tornado.ioloop.IOLoop.instance().add_callback(lambda: cls.stream_frames(*args, **kwargs))
 
     @classmethod
     def stream_frames(cls, done):
+        n = 0
         while not queue.empty():
-            frame = queue.get_nowait()
+            cls.frame = queue.get_nowait()
             for listener in cls.listeners:
-                listener.write(frame)
+                listener.write(cls.frame)
                 listener.flush()
-            sent = time.time()
-            delay = sent - cls.last_send
-            if True or delay > 0.15:
-                log.warning("Time between MP3 packets: %fs", delay)
-            cls.last_send = sent
+            n += 1
+            if n > 1:
+                log.warning("SENT MORE THAN ONE BURST! %d", n)
 
     @tornado.web.asynchronous
     def get(self):
+        log.info("Added new listener at %s", self.request.remote_ip)
         self.set_header("Content-Type", "audio/mpeg")
         if self.frame:
             self.write(self.frame)
         self.flush()
         self.listeners.append(self)
+
+    def on_finish(self):
+        log.info("Removed listener at %s", self.request.remote_ip)
+        self.listeners.remove(self)
 
 
 def start():
@@ -88,7 +90,7 @@ def add_tracks():
     track_queue = multiprocessing.Queue(1)
     pcm_queue = multiprocessing.Queue()
 
-    encoder = Lame(StreamHandler.on_new_frame, oqueue=queue)
+    encoder = Lame(StreamHandler.on_new_frame, open('testout.mp3', 'w'), oqueue=queue)
     encoder.start()
     sent = 0
 
@@ -97,14 +99,14 @@ def add_tracks():
 
     audio_buffer = []
     try:
-        for i in xrange(0, 10):
+        offsets = range(0, 40)
+        shuffle(offsets)
+        for i in offsets:
             tracks = filter(good_track, client.get('/tracks', order='hotness', limit=20, offset=i))
             shuffle(tracks)
             for track in tracks:
-                log.info("Grabbing stream of %s", track.title)
-                stream = client.get(track.stream_url).raw_data
                 log.info("Adding new track.")
-                track_queue.put((stream, track.obj))
+                track_queue.put(track.obj)
                 sent += 1
                 log.info("Added new track.")
                 if sent < 2:
