@@ -44,6 +44,10 @@ HEADER_SIZE = 4
 DEBUG_PRINT = False
 
 
+def avg(l):
+    return sum(l) / len(l)
+
+
 def frame_length(header):
     bitrate = BITRATE_TABLE[ord(header[2]) >> 4]
     sample_rate = SAMPLERATE_TABLE[(ord(header[2]) & 0b00001100) >> 2]
@@ -190,8 +194,10 @@ class Lame(threading.Thread):
 
     def run(self, *args, **kwargs):
         try:
+            last = None
+            timing = self.frame_interval * 1152.0 / self.samplerate
+            lag = 0
             while True:
-                write_time = time.time()
                 buf, samples = self.get_frames(self.frame_interval)
                 self.buffered -= samples
                 self.mp3_output += samples
@@ -218,15 +224,13 @@ class Lame(threading.Thread):
                         if DEBUG_PRINT:
                             print "sending\t\t", len(buf), "bytes"
                             print "sleeping for \t\t", samples / float(self.samplerate), "s"
-                        sleeptime = (samples / float(self.samplerate))
-                        write_time = (time.time() - write_time) * 5.0  # determined experimentally, 5.0 gives 3 digits
-                        #  3.5 -> 0.957712x
-                        #  5.0 -> 1.008067x
-                        #  9.0 -> 1.046941x
-                        time.sleep(max(0, sleeptime - write_time))
-                        #   TODO: Check for consistency over a longer period of
-                        #   time here. LAME should be able to throttle its own
-                        #   output to exactly 1 second of output per second.
+                        now = time.time()
+                        if last:
+                            delta = (now - last - timing)
+                            lag += delta
+                            if lag < timing:
+                                time.sleep(max(0, timing - delta))
+                        last = now
                     self.sent = True
                 else:
                     if self.data_notify_callback:

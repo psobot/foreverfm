@@ -1,12 +1,13 @@
 import socket
 import time
+import sys
 from lame import frame_length
 
 
-def listen(host, port):
+def listen(host, port, f="stream.mp3"):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((host, port))
-    s.send("GET /stream.mp3 HTTP/1.0\r\n\r\n")
+    s.send("GET /%s HTTP/1.0\r\n\r\n" % f)
 
     at = None
     times = []
@@ -43,4 +44,7 @@ def listen(host, port):
         at = got
 
 if __name__ == "__main__":
-    listen("localhost", 8192)
+    if len(sys.argv) > 2:
+        listen(sys.argv[1], int(sys.argv[2]), sys.argv[3])
+    else:
+        listen("localhost", 8192)

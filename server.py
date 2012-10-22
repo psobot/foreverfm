@@ -10,11 +10,10 @@ from random import shuffle
 from lame import Lame
 import multiprocessing
 import soundcloud
-import time
 client = soundcloud.Client(client_id="6325e96fcef18547e6552c23b4c0788c")
 
 prime_limit = 2
-frames = 1
+frames = 4
 
 
 def good_track(track):
@@ -40,19 +39,17 @@ class StreamHandler(tornado.web.RequestHandler):
 
     @classmethod
     def stream_frames(cls, done):
-        n = 0
         while not queue.empty():
             cls.frame = queue.get_nowait()
+            remove = []
             for listener in cls.listeners:
-                listener.write(cls.frame)
-                listener.flush()
-            n += 1
-            if n > 1:
-                log.warning("SENT MORE THAN ONE BURST! %d", n)
-            s = time.time()
-            if cls.last_send and (s - cls.last_send) > (frames * 1152.0 / 44100.0):
-                log.warning("BUFFER UNDERRUN: Sent MP3 after \t%fs, expected %f.", s - cls.last_send, (frames * 1152.0 / 44100.0))
-            cls.last_send = s
+                try:
+                    listener.write(cls.frame)
+                    listener.flush()
+                except:
+                    remove.append(listener)
+            for listener in remove:
+                cls.listeners.remove(listener)
 
     @tornado.web.asynchronous
     def get(self):
