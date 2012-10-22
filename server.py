@@ -13,13 +13,13 @@ import soundcloud
 client = soundcloud.Client(client_id="6325e96fcef18547e6552c23b4c0788c")
 
 prime_limit = 2
-frames = 4
+frames = 2
 
 
 def good_track(track):
     return track.streamable and track.duration < 360000 and track.duration > 90000
 
-
+encoder = None
 queue = Queue.Queue()
 
 
@@ -34,7 +34,6 @@ class StreamHandler(tornado.web.RequestHandler):
 
     @classmethod
     def on_new_frame(cls, *args, **kwargs):
-        #cls.stream_frames(*args, **kwargs)
         tornado.ioloop.IOLoop.instance().add_callback(lambda: cls.stream_frames(*args, **kwargs))
 
     @classmethod
@@ -49,7 +48,15 @@ class StreamHandler(tornado.web.RequestHandler):
                 except:
                     remove.append(listener)
             for listener in remove:
-                cls.listeners.remove(listener)
+                listener.on_finish()
+            if remove:
+                cls.update_frame_size()
+
+    @classmethod
+    def update_frame_size(cls):
+        log.info("Listener count: %d", len(cls.listeners))
+        encoder.frame_interval = min(16, max(1, int(0.08 * len(cls.listeners))))
+        log.info("Setting frame size to: %d frames per send.", encoder.frame_interval)
 
     @tornado.web.asynchronous
     def get(self):
@@ -59,10 +66,17 @@ class StreamHandler(tornado.web.RequestHandler):
             self.write(self.frame)
         self.flush()
         self.listeners.append(self)
+        self.update_frame_size()
 
     def on_finish(self):
         log.info("Removed listener at %s", self.request.remote_ip)
         self.listeners.remove(self)
+        self.update_frame_size()
+
+
+class FrameBufHandler(tornado.web.RequestHandler):
+    def get(self, new_val):
+        encoder.frame_interval = int(new_val)
 
 
 def start():
@@ -79,6 +93,9 @@ def start():
             (r"/(favicon.ico)", tornado.web.StaticFileHandler, {"path": "static/img/"}),
             (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": "static/"}),
 
+            # Modifiers
+            (r"/framebuf/(\d+)", FrameBufHandler),
+
             # Main stream
             (r"/stream.mp3", StreamHandler)]),
         socket_io_port=8193,
@@ -90,6 +107,7 @@ def start():
 
 
 def add_tracks():
+    global encoder
     track_queue = multiprocessing.Queue(1)
     pcm_queue = multiprocessing.Queue()
 

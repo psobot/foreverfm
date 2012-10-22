@@ -79,10 +79,6 @@ class Lame(threading.Thread):
 
         self.lame = None
         self.buffered = 0
-        self.mp3_output = 0  # Input encoder delay + MDCT delay
-        self.pcm_input = 528 + 288  # should be 528 (MDCT delay start) + 288 (MDCT overlap padding)
-        self.mp3_bytes = 0
-        self.next_starting_index = 0
         self.oqueue = oqueue
         self.ofile = ofile
         self.data_notify_callback = data_notify_callback
@@ -91,14 +87,11 @@ class Lame(threading.Thread):
         self.ready = threading.Semaphore()
         self.encode = threading.Semaphore()
         self.setDaemon(True)
-        self.tail_buf = ""
 
         self.__write_queue = Queue()
         self.__write_thread = threading.Thread(target=self.__lame_write)
         self.__write_thread.setDaemon(True)
         self.__write_thread.start()
-
-        self.__testfile = open("testfile.pcm", 'w')
 
     @property
     def pcm_datarate(self):
@@ -112,45 +105,24 @@ class Lame(threading.Thread):
             del data
             self.encode.acquire()
             self.__write_queue.put(chunk)
-            if DEBUG_PRINT:
-                print "Written PCM in!"
             if self.buffered >= self.safety_buffer:
-                if DEBUG_PRINT:
-                    print "ACQUIRING READY LOCK IN ADD_PCM"
                 self.ready.acquire()
-            if DEBUG_PRINT:
-                print "DONE ADD PCM"
             return True
         except IOError:
-            if DEBUG_PRINT:
-                print "IOError!"
             # LAME could close the stream itself, or error
             return False
 
     def __lame_write(self):
         while not self.finished:
-            if DEBUG_PRINT:
-                print "Waiting for data..."
             data = self.__write_queue.get()
             if data is None:
                 break
-            if DEBUG_PRINT:
-                print "Got data!"
             while len(data):
                 chunk = data[:self.chunk_size]
                 data = data[self.chunk_size:]
                 self.buffered += len(chunk) / 4
-                self.pcm_input += len(chunk) / 4
-                if DEBUG_PRINT:
-                    print "Writing chunk len:", len(chunk)
-                    print "buffered:", self.buffered
                 self.lame.stdin.write(chunk)
-                self.__testfile.write(chunk)
-                if DEBUG_PRINT:
-                    print "len:", len(chunk)
             self.encode.release()
-            if DEBUG_PRINT:
-                print "Done lame write of len:", len(chunk)
             del chunk
 
     def get_frames(self, n_frames):
@@ -195,23 +167,26 @@ class Lame(threading.Thread):
     def run(self, *args, **kwargs):
         try:
             last = None
-            timing = self.frame_interval * 1152.0 / self.samplerate
             lag = 0
             while True:
-                buf, samples = self.get_frames(self.frame_interval)
+                frames = []
+                timing = self.frame_interval * 1152.0 / self.samplerate
+
+                while len(frames) < self.frame_interval:
+                    header = self.lame.stdout.read(HEADER_SIZE)
+                    if len(header) < HEADER_SIZE:
+                        break
+                    frame_len = frame_length(header) - HEADER_SIZE
+                    frame = self.lame.stdout.read(frame_len)
+                    if len(frame) < frame_len:
+                        break
+                    frames.append(header + frame)
+                buf = "".join(frames)
+                samples = len(frames) * 1152
+
                 self.buffered -= samples
-                self.mp3_output += samples
-                if DEBUG_PRINT:
-                    print "lame buffer contains:\t", self.buffered, " samples \t(", (self.buffered / self.samplerate), "s)"
-                    print self.buffered, "samples still buffered in LAME"
-                    print self.pcm_input, "samples input"
-                    print self.mp3_output, "samples output"
                 if self.buffered < (self.safety_buffer * self.samplerate):
-                    if DEBUG_PRINT:
-                        print "RELEASING READY LOCK AT", self.buffered, "SAMPLES LEFT"
                     self.ready.release()
-                if self.buffered < 0:
-                    print "Samples in LAME buffer is less than 0: ", self.buffered
                 if len(buf):
                     if self.oqueue:
                         self.oqueue.put(buf)
@@ -221,9 +196,6 @@ class Lame(threading.Thread):
                     if self.data_notify_callback:
                         self.data_notify_callback(False)
                     if self.real_time and self.sent:
-                        if DEBUG_PRINT:
-                            print "sending\t\t", len(buf), "bytes"
-                            print "sleeping for \t\t", samples / float(self.samplerate), "s"
                         now = time.time()
                         if last:
                             delta = (now - last - timing)
@@ -265,17 +237,11 @@ if __name__ == "__main__":
     f = wave.open("test.wav")
     a = numpy.frombuffer(f.readframes(f.getnframes()), dtype=numpy.int16).reshape((-1, 2))
 
-    for exp in xrange(22, 30):
-        s = time.time()
-        chunk_size = 2 ** exp
-        print "Trying with chunk size: %d" % chunk_size
-        encoder = Lame(ofile=open('testout.mp3', 'w'))
-        encoder.chunk_size = chunk_size
-        encoder.safety_buffer = 30
-        encoder.start()
-        encoder.add_pcm(a)
-        encoder.finish()
-        s = time.time() - s
-        print "Time with buffer size %d: %fs" % (chunk_size, s)
-        print "\tFed LAME", encoder.pcm_input, "samples of PCM data (", (encoder.pcm_input / float(encoder.samplerate)), "seconds)"
-        print "\tGot back", encoder.mp3_output, "samples of MP3 data (", (encoder.mp3_output / float(encoder.samplerate)), "seconds)"
+    s = time.time()
+    encoder = Lame(ofile=open('testout.mp3', 'w'))
+    encoder.safety_buffer = 30
+    encoder.start()
+    encoder.add_pcm(a)
+    encoder.finish()
+    s = time.time() - s
+    print "Took %2.2fs" % s
