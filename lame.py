@@ -40,7 +40,20 @@ BITRATE_TABLE = [
 SAMPLERATE_TABLE = [
     44100, 48000, 32000, None
 ]
-DEBUG_PRINT = True
+HEADER_SIZE = 4
+DEBUG_PRINT = False
+
+
+def frame_length(header):
+    bitrate = BITRATE_TABLE[ord(header[2]) >> 4]
+    sample_rate = SAMPLERATE_TABLE[(ord(header[2]) & 0b00001100) >> 2]
+    padding = (ord(header[2]) & 0b00000010) >> 1
+    if False and DEBUG_PRINT:
+        print "\t", bitrate, "kbps"
+        print "\t", sample_rate, "Hz"
+        print "\tpadded?", padding
+
+    return int((1152.0 / sample_rate) * ((bitrate / 8) * 1000)) + padding
 
 
 class Lame(threading.Thread):
@@ -52,9 +65,8 @@ class Lame(threading.Thread):
     samplerate = 44100
     channels = 2
     preset = "-V2"
-    real_time = False
-    in_chunk_size = samplerate * channels * (input_wordlength / 8)
-    chunk_size = 32768
+    real_time = True
+    chunk_size = samplerate * channels * (input_wordlength / 8)
     frame_interval = 8  # frames at a time that we send to the user
     data = None
 
@@ -63,8 +75,8 @@ class Lame(threading.Thread):
 
         self.lame = None
         self.buffered = 0
-        self.mp3_output = 0
-        self.pcm_input = 0
+        self.mp3_output = 0  # Input encoder delay + MDCT delay
+        self.pcm_input = 528 + 288  # should be 528 (MDCT delay start) + 288 (MDCT overlap padding)
         self.mp3_bytes = 0
         self.next_starting_index = 0
         self.oqueue = oqueue
@@ -121,8 +133,8 @@ class Lame(threading.Thread):
             if DEBUG_PRINT:
                 print "Got data!"
             while len(data):
-                chunk = data[:self.in_chunk_size]
-                data = data[self.in_chunk_size:]
+                chunk = data[:self.chunk_size]
+                data = data[self.chunk_size:]
                 self.buffered += len(chunk) / 4
                 self.pcm_input += len(chunk) / 4
                 if DEBUG_PRINT:
@@ -137,71 +149,17 @@ class Lame(threading.Thread):
                 print "Done lame write of len:", len(chunk)
             del chunk
 
-    def frame_length(self, frame):
-        assert len(frame) >= 4
-        bitrate = BITRATE_TABLE[ord(frame[2]) >> 4]
-        sample_rate = SAMPLERATE_TABLE[(ord(frame[2]) & 0b00001100) >> 2]
-        padding = (ord(frame[2]) & 0b00000010) >> 1
-        if DEBUG_PRINT:
-            print "\t", bitrate,
-            print "kbps\t", sample_rate, "Hz",
-            print "\tpadded?", padding, "\t",
-
-        return int((1152.0 / sample_rate) * ((bitrate / 8) * 1000)) + padding
-
     def get_frames(self, n_frames):
-        valid_frame_count = 0
-        while valid_frame_count < n_frames:
-            _buf = self.lame.stdout.read(max(1045, self.chunk_size))
-            self.mp3_bytes += len(_buf)
+        frames = []
+        while len(frames) < n_frames:
+            header = self.lame.stdout.read(HEADER_SIZE)
+            if len(header) < HEADER_SIZE:
+                break
+            frame = self.lame.stdout.read(frame_length(header) - HEADER_SIZE)
+            frames.append(header + frame)
+        return "".join(frames), (len(frames) * 1152)
 
-            if not _buf:
-                if self.tail_buf:
-                    tb = self.tail_buf
-                    self.tail_buf = ""
-                    return tb, 1152.0 / 44100.0
-                else:
-                    return "", 0
-            buf = self.tail_buf + _buf
-
-            # Look for the first frame header
-            if hasattr(self, 'next_starting_index'):
-                s = self.next_starting_index
-            else:
-                s = buf.index("\xFF\xFB")
-            if DEBUG_PRINT:
-                print "Starting index:", s
-            l = self.frame_length(buf[s:])
-            if DEBUG_PRINT:
-                print "Length of first frame:", l
-            while s < len(buf) and (len(buf) - s) > 3:
-                s += buf[s:].index("\xFF\xFB")
-                print s
-                if DEBUG_PRINT:
-                    print "Header: %0X%0X%0X%0X" % tuple([ord(x) for x in buf[s:s + 4]]),
-                    print "at %d" % (self.mp3_bytes + s),
-                l = self.frame_length(buf[s:])
-                if s + l > len(buf):
-                    if DEBUG_PRINT:
-                        print "next frame size exceeds grabbed buffer:", (l), len(buf) - s
-                    self.next_starting_index = max(0, (s + l) - len(buf))
-                    break
-                else:
-                    self.next_starting_index = 0
-                frame = buf[s:s + l]
-                s += l
-
-                if DEBUG_PRINT:
-                    print "Got frame:\t", len(frame), "bytes",
-                    print
-                valid_frame_count += 1
-            self.tail_buf = buf[s:]
-            print "len of tail buf:", len(self.tail_buf)
-            if DEBUG_PRINT:
-                print "Set next starting index to", self.next_starting_index
-        return _buf, (valid_frame_count * 1152)
-
-    #   TODO: Extend me to work for all bitwidths and samplerates
+    #   TODO: Extend me to work for all samplerates
     def start(self, *args, **kwargs):
         call = ["lame"]
         call.append('-r')
@@ -233,22 +191,21 @@ class Lame(threading.Thread):
     def run(self, *args, **kwargs):
         try:
             while True:
+                write_time = time.time()
                 buf, samples = self.get_frames(self.frame_interval)
                 self.buffered -= samples
                 self.mp3_output += samples
-                if self.buffered < 0:
-                    print "OHNOES::::::::: Buffered length is less than 0! Written", self.pcm_input, "bytes of PCM, read", self.mp3_output, "samples of MP3"
-                    print "OHNOES::::::::: Got", (self.mp3_output - self.pcm_input), "extra samples!"
-                    assert False
-                    self.buffered = 0
                 if DEBUG_PRINT:
+                    print "lame buffer contains:\t", self.buffered, " samples \t(", (self.buffered / self.samplerate), "s)"
                     print self.buffered, "samples still buffered in LAME"
                     print self.pcm_input, "samples input"
                     print self.mp3_output, "samples output"
-                if self.buffered < self.safety_buffer:
+                if self.buffered < (self.safety_buffer * self.samplerate):
                     if DEBUG_PRINT:
-                        print "RELEASING READY LOCK AT", self.buffered
+                        print "RELEASING READY LOCK AT", self.buffered, "SAMPLES LEFT"
                     self.ready.release()
+                if self.buffered < 0:
+                    print "Samples in LAME buffer is less than 0: ", self.buffered
                 if len(buf):
                     if self.oqueue:
                         self.oqueue.put(buf)
@@ -258,7 +215,18 @@ class Lame(threading.Thread):
                     if self.data_notify_callback:
                         self.data_notify_callback(False)
                     if self.real_time and self.sent:
-                        time.sleep(samples / 44100.0)
+                        if DEBUG_PRINT:
+                            print "sending\t\t", len(buf), "bytes"
+                            print "sleeping for \t\t", samples / float(self.samplerate), "s"
+                        sleeptime = (samples / float(self.samplerate))
+                        write_time = (time.time() - write_time) * 5.0  # determined experimentally, 5.0 gives 3 digits
+                        #  3.5 -> 0.957712x
+                        #  5.0 -> 1.008067x
+                        #  9.0 -> 1.046941x
+                        time.sleep(max(0, sleeptime - write_time))
+                        #   TODO: Check for consistency over a longer period of
+                        #   time here. LAME should be able to throttle its own
+                        #   output to exactly 1 second of output per second.
                     self.sent = True
                 else:
                     if self.data_notify_callback:
@@ -293,7 +261,7 @@ if __name__ == "__main__":
     f = wave.open("test.wav")
     a = numpy.frombuffer(f.readframes(f.getnframes()), dtype=numpy.int16).reshape((-1, 2))
 
-    for exp in xrange(13, 16):
+    for exp in xrange(22, 30):
         s = time.time()
         chunk_size = 2 ** exp
         print "Trying with chunk size: %d" % chunk_size
