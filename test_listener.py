@@ -4,7 +4,7 @@ import sys
 from lame import frame_length
 
 
-def listen(host, port, f="stream.mp3"):
+def listen(host, port, f="all.mp3"):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((host, port))
     s.send("GET /%s HTTP/1.0\r\n\r\n" % f)

@@ -7,120 +7,146 @@ import tornadio2.server
 import threading
 import logging
 from random import shuffle
-from lame import Lame
 import multiprocessing
 import soundcloud
-client = soundcloud.Client(client_id="6325e96fcef18547e6552c23b4c0788c")
+import lame
 
-prime_limit = 2
-frames = 2
+client = soundcloud.Client(client_id="6325e96fcef18547e6552c23b4c0788c")
 
 
 def good_track(track):
     return track.streamable and track.duration < 360000 and track.duration > 90000
 
-encoder = None
-queue = Queue.Queue()
-
 
 logging.basicConfig(format="%(asctime)s P%(process)-5d (%(levelname)8s) %(module)16s%(lineno)5d: %(uid)32s %(message)s")
 log = logging.getLogger(__name__)
 
+import sys
+test_mode = 'test' in sys.argv
+
+
+class Listeners(list):
+    def __init__(self, queue, name):
+        self.__queue = queue
+        self.__name = name
+        self.__packet = None
+        list.__init__(self)
+
+    def append(self, listener):
+        if self.__packet:
+            listener.write(self.__packet)
+            listener.flush()
+        list.append(self, listener)
+
+    def broadcast(self):
+        try:
+            self.__packet = self.__queue.get_nowait()
+            for listener in self:
+                listener.write(self.__packet)
+                listener.flush()
+        except Queue.Empty:
+            if self.__packet:
+                log.warning("Dropping frames! Queue %s is starving!", self.__name)
+            pass
+
 
 class StreamHandler(tornado.web.RequestHandler):
+    __subclasses = []
     listeners = []
-    frame = None
-    last_send = None
 
     @classmethod
-    def on_new_frame(cls, *args, **kwargs):
-        tornado.ioloop.IOLoop.instance().add_callback(lambda: cls.stream_frames(*args, **kwargs))
+    def stream_frames(cls):
+        for klass in cls.__subclasses:
+            klass.listeners.broadcast()
 
     @classmethod
-    def stream_frames(cls, done):
-        while not queue.empty():
-            cls.frame = queue.get_nowait()
-            remove = []
-            for listener in cls.listeners:
-                try:
-                    listener.write(cls.frame)
-                    listener.flush()
-                except:
-                    remove.append(listener)
-            for listener in remove:
-                listener.on_finish()
-            if remove:
-                cls.update_frame_size()
-
-    @classmethod
-    def update_frame_size(cls):
-        log.info("Listener count: %d", len(cls.listeners))
-        encoder.frame_interval = min(16, max(1, int(0.08 * len(cls.listeners))))
-        log.info("Setting frame size to: %d frames per send.", encoder.frame_interval)
+    def init_streams(cls, streams):
+        routes = []
+        for endpoint, name, q in streams:
+            klass = type(
+                name + "Handler",
+                (StreamHandler,),
+                {"listeners": Listeners(q, name)}
+            )
+            cls.__subclasses.append(klass)
+            routes.append((endpoint, klass))
+        return routes
 
     @tornado.web.asynchronous
     def get(self):
         log.info("Added new listener at %s", self.request.remote_ip)
         self.set_header("Content-Type", "audio/mpeg")
-        if self.frame:
-            self.write(self.frame)
-        self.flush()
         self.listeners.append(self)
-        self.update_frame_size()
 
     def on_finish(self):
         log.info("Removed listener at %s", self.request.remote_ip)
         self.listeners.remove(self)
-        self.update_frame_size()
 
 
-class FrameBufHandler(tornado.web.RequestHandler):
-    def get(self, new_val):
-        encoder.frame_interval = int(new_val)
+class BufferedReadQueue(Queue.Queue):
+    def __init__(self, lim=None):
+        self.raw = multiprocessing.Queue(lim)
+        self.__listener = threading.Thread(target=self.listen)
+        self.__listener.setDaemon(True)
+        self.__listener.start()
+        Queue.Queue.__init__(self, lim)
+
+    def listen(self):
+        try:
+            while True:
+                self.put(self.raw.get())
+        except:
+            pass
+
+    @property
+    def buffered(self):
+        return self.qsize()
 
 
 def start():
-    at = threading.Thread(target=add_tracks)
+    track_queue = multiprocessing.Queue(1)
+    v2_queue = BufferedReadQueue()
+
+    mixer = Mixer(iqueue=track_queue, oqueues=(v2_queue.raw,))
+    mixer.start()
+
+    at = threading.Thread(target=add_tracks, args=(track_queue,))
     at.daemon = True
     at.start()
 
     class SocketConnection(tornadio2.conn.SocketConnection):
         __endpoints__ = {}
 
+    stream_routes = StreamHandler.init_streams([
+        (r"/all.mp3", "All", v2_queue)
+    ])
+
     application = tornado.web.Application(
         tornadio2.TornadioRouter(SocketConnection).apply_routes([
             # Static assets for local development
             (r"/(favicon.ico)", tornado.web.StaticFileHandler, {"path": "static/img/"}),
             (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": "static/"}),
-
-            # Modifiers
-            (r"/framebuf/(\d+)", FrameBufHandler),
-
-            # Main stream
-            (r"/stream.mp3", StreamHandler)]),
+        ] + stream_routes),
         socket_io_port=8193,
         enabled_protocols=['websocket', 'xhr-multipart', 'xhr-polling', 'jsonp-polling']
     )
+
+    frame_sender = tornado.ioloop.PeriodicCallback(
+        StreamHandler.stream_frames,
+        (float(lame.SAMPLES_PER_FRAME) / mixer.samplerate) * 1000
+    )
+    frame_sender.start()
 
     application.listen(8192)
     tornadio2.server.SocketServer(application)
 
 
-def add_tracks():
-    global encoder
-    track_queue = multiprocessing.Queue(1)
-    pcm_queue = multiprocessing.Queue()
-
-    encoder = Lame(StreamHandler.on_new_frame, open('testout.mp3', 'w'), oqueue=queue)
-    encoder.frame_interval = frames
-    encoder.start()
+def add_tracks(track_queue):
     sent = 0
-
-    m = Mixer(inqueue=track_queue, outqueue=pcm_queue)
-    m.start()
-
-    audio_buffer = []
     try:
+        while test_mode:
+            track_queue.put({})
+
         offsets = range(0, 40)
         shuffle(offsets)
         for i in offsets:
@@ -131,14 +157,6 @@ def add_tracks():
                 track_queue.put(track.obj)
                 sent += 1
                 log.info("Added new track.")
-                if sent < 2:
-                    continue
-                if len(audio_buffer) > 1:
-                    log.info("Encoding...")
-                    encoder.add_pcm(audio_buffer.pop(0))
-                    log.info("Encoded!")
-                log.info("Waiting for PCM...")
-                audio_buffer.append(pcm_queue.get())
     finally:
         pass
 

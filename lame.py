@@ -1,8 +1,16 @@
+from Queue import Queue
 import subprocess
 import threading
-import time
 import traceback
-from Queue import Queue
+import time
+
+"""
+    Quick and dirty, frame-aware MP3 encoding bridge using LAME.
+    About 75% of the speed of raw LAME. Pass PCM data to the Lame class,
+    get back (via callback, queue or file) MP3 frames. Supports real-time
+    encoding or blocking for the length of the audio stream - useful for
+    an MP3 server, or something else real time, for example.
+"""
 
 """
 Some important LAME facts used below:
@@ -29,7 +37,7 @@ Some important LAME facts used below:
                                 1110 -> 320 kbps
                                 1111 -> invalid
 
-    Following the header, there are always 1152 samples of audio data.
+    Following the header, there are always SAMPLES_PER_FRAME samples of audio data.
     At our constant sampling frequency of 44100, this means each frame
     contains exactly .026122449 seconds of audio.
 """
@@ -41,7 +49,7 @@ SAMPLERATE_TABLE = [
     44100, 48000, 32000, None
 ]
 HEADER_SIZE = 4
-DEBUG_PRINT = False
+SAMPLES_PER_FRAME = 1152
 
 
 def avg(l):
@@ -52,12 +60,7 @@ def frame_length(header):
     bitrate = BITRATE_TABLE[ord(header[2]) >> 4]
     sample_rate = SAMPLERATE_TABLE[(ord(header[2]) & 0b00001100) >> 2]
     padding = (ord(header[2]) & 0b00000010) >> 1
-    if False and DEBUG_PRINT:
-        print "\t", bitrate, "kbps"
-        print "\t", sample_rate, "Hz"
-        print "\tpadded?", padding
-
-    return int((1152.0 / sample_rate) * ((bitrate / 8) * 1000)) + padding
+    return int((float(SAMPLES_PER_FRAME) / sample_rate) * ((bitrate / 8) * 1000)) + padding
 
 
 class Lame(threading.Thread):
@@ -69,19 +72,23 @@ class Lame(threading.Thread):
     samplerate = 44100
     channels = 2
     preset = "-V2"
-    real_time = True
+
+    #   Time-sensitive options
+    real_time = False       #   Should we encode in 1:1 real time?
+    block = False           #   Regardless of real-time, should we block
+                            #   for as long as the audio we've encoded lasts?
+
     chunk_size = samplerate * channels * (input_wordlength / 8)
-    frame_interval = 8  # frames at a time that we send to the user
     data = None
 
-    def __init__(self, data_notify_callback=None, ofile=None, oqueue=None):
+    def __init__(self, callback=None, ofile=None, oqueue=None):
         threading.Thread.__init__(self)
 
         self.lame = None
         self.buffered = 0
         self.oqueue = oqueue
         self.ofile = ofile
-        self.data_notify_callback = data_notify_callback
+        self.callback = callback
         self.finished = False
         self.sent = False
         self.ready = threading.Semaphore()
@@ -98,19 +105,25 @@ class Lame(threading.Thread):
         return self.samplerate * self.channels * (self.input_wordlength / 8)
 
     def add_pcm(self, data):
+        """
+        Expects PCM data in the form of a NumPy array.
+
+        """
         if self.lame.returncode is not None:
             return False
-        try:
-            chunk = data.tostring()
-            del data
-            self.encode.acquire()
-            self.__write_queue.put(chunk)
-            if self.buffered >= self.safety_buffer:
-                self.ready.acquire()
-            return True
-        except IOError:
-            # LAME could close the stream itself, or error
-            return False
+        self.encode.acquire()
+        samples = len(data)
+        self.__write_queue.put(data.tostring())
+        put_time = time.time()
+        if self.buffered >= self.safety_buffer:
+            self.ready.acquire()
+        done_time = time.time()
+        if self.block and not self.real_time:
+            delay = (samples / float(self.samplerate)) \
+                    - (done_time - put_time) \
+                    - self.safety_buffer
+            time.sleep(delay)
+        return True
 
     def __lame_write(self):
         while not self.finished:
@@ -120,10 +133,15 @@ class Lame(threading.Thread):
             while len(data):
                 chunk = data[:self.chunk_size]
                 data = data[self.chunk_size:]
-                self.buffered += len(chunk) / 4
-                self.lame.stdin.write(chunk)
+                self.buffered += len(chunk) / self.channels * (self.input_wordlength / 8)
+                try:
+                    self.lame.stdin.write(chunk)
+                except IOError:
+                    self.finished = True
+                    break
             self.encode.release()
             del chunk
+            del data
 
     def get_frames(self, n_frames):
         frames = []
@@ -133,7 +151,7 @@ class Lame(threading.Thread):
                 break
             frame = self.lame.stdout.read(frame_length(header) - HEADER_SIZE)
             frames.append(header + frame)
-        return "".join(frames), (len(frames) * 1152)
+        return "".join(frames), (len(frames) * SAMPLES_PER_FRAME)
 
     #   TODO: Extend me to work for all samplerates
     def start(self, *args, **kwargs):
@@ -143,8 +161,6 @@ class Lame(threading.Thread):
             call.extend(["--bitwidth", str(self.input_wordlength)])
         call.extend(self.preset.split())
         call.extend(["-", "-"])
-        if DEBUG_PRINT:
-            print " ".join(call)
         self.lame = subprocess.Popen(
             call,
             stdin=subprocess.PIPE,
@@ -169,22 +185,18 @@ class Lame(threading.Thread):
             last = None
             lag = 0
             while True:
-                frames = []
-                timing = self.frame_interval * 1152.0 / self.samplerate
+                timing = float(SAMPLES_PER_FRAME) / self.samplerate
 
-                while len(frames) < self.frame_interval:
-                    header = self.lame.stdout.read(HEADER_SIZE)
-                    if len(header) < HEADER_SIZE:
-                        break
+                header = self.lame.stdout.read(HEADER_SIZE)
+                if len(header) == HEADER_SIZE:
                     frame_len = frame_length(header) - HEADER_SIZE
                     frame = self.lame.stdout.read(frame_len)
-                    if len(frame) < frame_len:
-                        break
-                    frames.append(header + frame)
-                buf = "".join(frames)
-                samples = len(frames) * 1152
+                    buf = header + frame
+                    if len(frame) == frame_len:
+                        self.buffered -= SAMPLES_PER_FRAME
+                else:
+                    buf = header
 
-                self.buffered -= samples
                 if self.buffered < (self.safety_buffer * self.samplerate):
                     self.ready.release()
                 if len(buf):
@@ -193,8 +205,8 @@ class Lame(threading.Thread):
                     if self.ofile:
                         self.ofile.write(buf)
                         self.ofile.flush()
-                    if self.data_notify_callback:
-                        self.data_notify_callback(False)
+                    if self.callback:
+                        self.callback(False)
                     if self.real_time and self.sent:
                         now = time.time()
                         if last:
@@ -205,13 +217,11 @@ class Lame(threading.Thread):
                         last = now
                     self.sent = True
                 else:
-                    if self.data_notify_callback:
-                        self.data_notify_callback(True)
+                    if self.callback:
+                        self.callback(True)
                     break
             self.lame.wait()
         except:
-            if DEBUG_PRINT:
-                print "EXCEPTED!"
             traceback.print_exc()
             self.finish()
             raise
@@ -231,6 +241,7 @@ class Lame(threading.Thread):
             return self.lame.returncode
         return -1
 
+
 if __name__ == "__main__":
     import wave
     import numpy
@@ -238,6 +249,7 @@ if __name__ == "__main__":
     a = numpy.frombuffer(f.readframes(f.getnframes()), dtype=numpy.int16).reshape((-1, 2))
 
     s = time.time()
+    print "Encoding test.wav to testout.mp3..."
     encoder = Lame(ofile=open('testout.mp3', 'w'))
     encoder.safety_buffer = 30
     encoder.start()

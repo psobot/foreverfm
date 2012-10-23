@@ -22,6 +22,8 @@ import traceback
 import time
 import logging
 import cStringIO
+from lame import Lame
+import numpy
 
 import soundcloud
 client = soundcloud.Client(client_id="6325e96fcef18547e6552c23b4c0788c")
@@ -29,19 +31,33 @@ client = soundcloud.Client(client_id="6325e96fcef18547e6552c23b4c0788c")
 logging.basicConfig(format="%(asctime)s P%(process)-5d (%(levelname)8s) %(module)16s%(lineno)5d: %(uid)32s %(message)s")
 log = logging.getLogger(__name__)
 
+import sys
+test_mode = 'test' in sys.argv
+
+import gc
+
 
 class Mixer(multiprocessing.Process):
-    def __init__(self, initial=None,
+    def __init__(self, iqueue, oqueues,
+                 settings=({},), initial=None,
                  max_play_time=300, transition_time=30,
-                 inqueue=None, outqueue=None):
-        self.inqueue = inqueue
-        self.outqueue = outqueue
+                 safety_buffer=30, samplerate=44100):
+        self.iqueue = iqueue
+
+        self.encoders = []
+        if len(oqueues) != len(settings):
+            raise ValueError("Differing number of output queues and settings!")
+
+        self.oqueues = oqueues
+        self.settings = settings
 
         self.__track_lock = threading.Lock()
         self.__tracks = []
 
         self.max_play_time = max_play_time
         self.transition_time = transition_time
+        self.safety_buffer = safety_buffer
+        self.samplerate = 44100
         self.__stop = False
 
         if isinstance(initial, list):
@@ -68,6 +84,10 @@ class Mixer(multiprocessing.Process):
     def current_track(self):
         return self.tracks[0]
 
+    def get_stream(self, x):
+        #   TODO: Extend me to deal with possible downloadable tracks
+        return cStringIO.StringIO(client.get(x['stream_url']).raw_data)
+
     def analyze(self, x):
         if isinstance(x, list):
             return [self.analyze(y) for y in x]
@@ -77,7 +97,7 @@ class Mixer(multiprocessing.Process):
             return self.analyze(*x)
 
         log.info("Grabbing stream of %s", x['title'])
-        laf = LocalAudioFile(cStringIO.StringIO(client.get(x['stream_url']).raw_data), type='mp3')
+        laf = LocalAudioFile(self.get_stream(x), type='mp3')
         setattr(laf, "_metadata", x)
         return self.process(laf)  # TODO: Fix MP3 const
 
@@ -111,7 +131,7 @@ class Mixer(multiprocessing.Process):
     def loop(self):
         while len(self.tracks) < 2:
             log.info("Waiting for a new track.")
-            self.add_track(self.inqueue.get())  # TODO: Extend me to allow multiple tracks.
+            self.add_track(self.iqueue.get())  # TODO: Extend me to allow multiple tracks.
             log.info("Got a new track.")
 
         # Initial transition. Should contain 2 instructions: fadein, and playback.
@@ -129,14 +149,25 @@ class Mixer(multiprocessing.Process):
                                       self.transition_time)
                 self.tracks = self.tracks[1:]
             log.info("Waiting for a new track.")
-            self.add_track(self.inqueue.get())  # TODO: Extend me to allow multiple tracks.
+            self.add_track(self.iqueue.get())  # TODO: Extend me to allow multiple tracks.
             log.info("Got a new track.")
 
         # Last chunk. Should contain 1 instruction: fadeout.
         yield terminate(self.tracks[-1], FADE_OUT)
 
     def run(self):
+        for oqueue, settings in zip(self.oqueues, self.settings):
+            e = Lame(oqueue=oqueue, **settings)
+            self.encoders.append(e)
+            e.start()
+
         try:
+            while test_mode:
+                import wave
+                f = wave.open("test.wav")
+                a = numpy.frombuffer(f.readframes(f.getnframes()), dtype=numpy.int16).reshape((-1, 2))
+                self.encode(a)
+
             renderer = display_actions()
             renderer.send(None)
             for i, actions in enumerate(self.loop()):
@@ -148,14 +179,31 @@ class Mixer(multiprocessing.Process):
                 log.info("Rendered in %fs!", time.time() - _a)
                 _a = time.time()
                 log.info("Assembling audio data...")
-                out = assemble(ADs, numChannels=2, sampleRate=44100)
+                out = assemble(ADs, numChannels=2, sampleRate=self.samplerate)
                 log.info("Assembled in %fs!", time.time() - _a)
-                self.outqueue.put(out.data)
+                del ADs
+                gc.collect()
+                self.encode(out.data)
         except:
             traceback.print_exc()
-            print "STOPPING PROCESSING THREAD!"
             self.stop()
             return
+
+    def encode(self, pcm_data):
+        samples = len(pcm_data)
+        put_time = time.time()
+        for encoder in self.encoders:
+            encoder.add_pcm(pcm_data)
+        done_time = time.time()
+        del pcm_data
+        gc.collect()
+
+        delay = max(0, (samples / float(self.samplerate)) \
+                        - (done_time - put_time) \
+                        - self.safety_buffer)
+        print "Encoded! delaying for", delay
+
+        time.sleep(delay)
 
     def stop(self):
         self.__stop = True
