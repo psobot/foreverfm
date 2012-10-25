@@ -143,16 +143,6 @@ class Lame(threading.Thread):
             del chunk
             del data
 
-    def get_frames(self, n_frames):
-        frames = []
-        while len(frames) < n_frames:
-            header = self.lame.stdout.read(HEADER_SIZE)
-            if len(header) < HEADER_SIZE:
-                break
-            frame = self.lame.stdout.read(frame_length(header) - HEADER_SIZE)
-            frames.append(header + frame)
-        return "".join(frames), (len(frames) * SAMPLES_PER_FRAME)
-
     #   TODO: Extend me to work for all samplerates
     def start(self, *args, **kwargs):
         call = ["lame"]

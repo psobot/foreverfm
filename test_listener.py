@@ -15,7 +15,7 @@ def listen(host, port, f="all.mp3"):
     start = None
     off = 0
     while True:
-        start = s.recv(16)
+        start = s.recv(512)
         if "\xFF\xFB" in start:
             i = start.index("\xFF\xFB")
             off = len(start) - i - 4
@@ -31,7 +31,12 @@ def listen(host, port, f="all.mp3"):
             off = 0
         if not len(header):
             break
-        flen = frame_length(header)
+        try:
+            flen = frame_length(header)
+            if (flen - 4 - off) < 0:
+                raise ValueError()
+        except:
+            continue
         data = s.recv(flen - 4 - off)
         got = time.time()
         if not len(data):
@@ -46,6 +51,6 @@ def listen(host, port, f="all.mp3"):
 
 if __name__ == "__main__":
     if len(sys.argv) > 2:
-        listen(sys.argv[1], int(sys.argv[2]), sys.argv[3])
+        listen(sys.argv[1], int(sys.argv[2]))
     else:
         listen("localhost", 8192)

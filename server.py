@@ -12,8 +12,10 @@ import multiprocessing
 import soundcloud
 import lame
 import time
+from metadata import Metadata
 
 client = soundcloud.Client(client_id="b08793cf5964f5571db86e3ca9e5378f")
+Metadata.client = client
 
 
 def good_track(track):
@@ -28,7 +30,7 @@ test_mode = 'test' in sys.argv
 
 
 frame_seconds = lame.SAMPLES_PER_FRAME / 44100.0
-LAG_LIMIT = 60  # seconds. If we're lagging by this much, drop packets and try again.
+LAG_LIMIT = 2  # seconds. If we're lagging by this much, drop packets and try again.
 
 
 class Listeners(list):
@@ -49,17 +51,21 @@ class Listeners(list):
     def broadcast(self):
         try:
             if self.__lag > LAG_LIMIT:
+                log.error("Lag (%s) exceeds limit - dropping frames!",
+                          self.__lag)
                 self.__lag = 0
 
             self.__broadcast()
             if self.__last_send:
                 self.__lag += (time.time() - self.__last_send) - frame_seconds
+            else:
+                log.info("Sending first frame for %s.", self.__name)
             self.__last_send = time.time()
 
             if self.__lag > 0:   # TODO: Doesn't this make this "leading?"
-                log.warning("Queue %s lagging by %2.2f ms. Compensating...",
+                log.warning("Queue %s lag detected. (%2.2f ms)",
                             self.__name, self.__lag * 1000)
-                while self.__lag > 0:
+                while self.__lag > 0 and not self.__queue.empty():
                     self.__broadcast()
                     self.__lag -= frame_seconds
 
@@ -196,6 +202,7 @@ def add_tracks(track_queue):
                 track_queue.put(track.obj)
                 sent += 1
                 log.info("Added new track.")
+                log.info("Track colour is %s.", Metadata(track).find_color())
     finally:
         pass
 
