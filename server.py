@@ -28,6 +28,7 @@ test_mode = 'test' in sys.argv
 
 
 frame_seconds = lame.SAMPLES_PER_FRAME / 44100.0
+LAG_LIMIT = 60  # seconds. If we're lagging by this much, drop packets and try again.
 
 
 class Listeners(list):
@@ -47,9 +48,13 @@ class Listeners(list):
 
     def broadcast(self):
         try:
+            if self.__lag > LAG_LIMIT:
+                self.__lag = 0
+
             self.__broadcast()
             if self.__last_send:
                 self.__lag += (time.time() - self.__last_send) - frame_seconds
+            self.__last_send = time.time()
 
             if self.__lag > 0:   # TODO: Doesn't this make this "leading?"
                 log.warning("Queue %s lagging by %2.2f ms. Compensating...",
@@ -118,7 +123,6 @@ class BufferedReadQueue(Queue.Queue):
         try:
             while True:
                 self.put(self.raw.get())
-                print "In buffer: %2.2fs of audio" % (frame_seconds * self.buffered)
         except:
             pass
 
