@@ -76,7 +76,7 @@ def ffmpeg(infile,
         command += " -ac " + str(numChannels)
     if sampleRate is not None:
         command += " -ar " + str(sampleRate)
-    command += " -f wav pipe:1"
+    command += " -f s16le -acodec pcm_s16le pipe:1"
     logging.getLogger(__name__).info("Calling ffmpeg: %s", command)
 
     (lin, mac, win) = get_os()
@@ -114,30 +114,10 @@ def ffmpeg(infile,
         os.unlink(name)
         return r
     ffmpeg_error_check(e)
-
-    io = cStringIO.StringIO()
-    io.write(f)
     mid = time.time()
-    #   Let's write the WAV header ourselves, since FFMPEG doesn't.
-    #   TODO: This is used multiple places, extract to a helper.
-    io.seek(0, 2)
-    total_size = io.tell()
-    io.seek(4, 0)
-    size_1 = io.read(4)
-    size_1 = struct.unpack("<L", size_1)[0]
-    if size_1:
-        #   Header is already written
-        io.seek(0)
-        return io
-    io.seek(4, 0)
-    io.write(struct.pack("<L", total_size - 8))
-    io.seek(40, 0)
-    io.write(struct.pack("<L", total_size - 44))
-    io.seek(0)
-    end = time.time()
-    logging.getLogger(__name__).info("Decoded in %ss, added header in %sms",
-                                     (mid - start), 1000000 * (end - mid))
-    return io
+    arr = numpy.frombuffer(f, dtype=numpy.int16).reshape((-1, 2))
+    logging.getLogger(__name__).info("Decoded in %ss.", (mid - start))
+    return arr
 
 
 def ffmpeg_downconvert(infile, format=None, uid=None, lastTry=False):
@@ -407,7 +387,7 @@ class AudioData(AudioData):
             else:
                 self.numChannels = 2
                 self.sampleRate = 44100
-                file_to_read = ffmpeg(
+                ndarray = ffmpeg(
                     (self.filename if self.filename else self.filedata),
                     numChannels=self.numChannels,
                     sampleRate=self.sampleRate,
@@ -419,19 +399,20 @@ class AudioData(AudioData):
             file_to_read.seek(0)
             self.numChannels = 2
             self.sampleRate = 44100
-        w = wave.open(file_to_read, 'r')
-        numFrames = w.getnframes()
+            w = wave.open(file_to_read, 'r')
+            numFrames = w.getnframes()
+            self.numChannels = w.getnchannels()
+            self.sampleRate = w.getframerate()
+            raw = w.readframes(numFrames)
+            data = numpy.frombuffer(raw, dtype="<h", count=len(raw) / 2)
+            ndarray = numpy.array(data, dtype=pcmFormat)
+            if self.numChannels > 1:
+                ndarray.resize((numFrames, self.numChannels))
+            w.close()
 
         #   If the file actually has a different sampleRate or numChannels,
         #   this is where we find out. FFMPEG detects and encodes the output
         #   stream appropriately.
-        self.numChannels = w.getnchannels()
-        self.sampleRate = w.getframerate()
-        raw = w.readframes(numFrames)
-        data = numpy.frombuffer(raw, dtype="<h", count=len(raw) / 2)
-        ndarray = numpy.array(data, dtype=pcmFormat)
-        if self.numChannels > 1:
-            ndarray.resize((numFrames, self.numChannels))
         self.data = numpy.zeros((0,) if self.numChannels == 1
                                 else (0, self.numChannels),
                                 dtype=pcmFormat)
@@ -439,7 +420,6 @@ class AudioData(AudioData):
         if ndarray is not None:
             self.endindex = len(ndarray)
             self.data = ndarray
-        w.close()
 
     def encode_to_stringio(self):
         fid = cStringIO.StringIO()

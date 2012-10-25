@@ -41,6 +41,7 @@ def listen(host, port, f="all.mp3"):
             avg = ((1152 / 44100.0) / (sum(times) / len(times)))
             print "Frame (%d bytes, %2.5fs) received after %2.5fs\t(%2.2fx)\tAvg: %fx" % \
                     (len(data), 1152 / 44100.0, got - at,  (1152 / 44100.0) / (got - at), avg)
+            times = times[:383]  # number of frames in the past 10 seconds
         at = got
 
 if __name__ == "__main__":

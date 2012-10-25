@@ -59,6 +59,7 @@ class Mixer(multiprocessing.Process):
         self.safety_buffer = safety_buffer
         self.samplerate = 44100
         self.__stop = False
+        self.__first = True
 
         if isinstance(initial, list):
             self.add_tracks(initial)
@@ -197,13 +198,12 @@ class Mixer(multiprocessing.Process):
         done_time = time.time()
         del pcm_data
         gc.collect()
-
-        delay = max(0, (samples / float(self.samplerate)) \
-                        - (done_time - put_time) \
-                        - self.safety_buffer)
-        print "Encoded! delaying for", delay
-
-        time.sleep(delay)
+        if not self.__first:
+            delay = max(0, (samples / float(self.samplerate)) \
+                            - (done_time - put_time) \
+                            - self.safety_buffer)
+            time.sleep(delay)
+        self.__first = False
 
     def stop(self):
         self.__stop = True

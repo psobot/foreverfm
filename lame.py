@@ -71,7 +71,7 @@ class Lame(threading.Thread):
     input_wordlength = 16
     samplerate = 44100
     channels = 2
-    preset = "-V2"
+    preset = "-V3"
 
     #   Time-sensitive options
     real_time = False       #   Should we encode in 1:1 real time?

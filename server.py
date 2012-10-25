@@ -7,11 +7,13 @@ import tornadio2.server
 import threading
 import logging
 from random import shuffle
+from operator import attrgetter
 import multiprocessing
 import soundcloud
 import lame
+import time
 
-client = soundcloud.Client(client_id="6325e96fcef18547e6552c23b4c0788c")
+client = soundcloud.Client(client_id="b08793cf5964f5571db86e3ca9e5378f")
 
 
 def good_track(track):
@@ -25,11 +27,16 @@ import sys
 test_mode = 'test' in sys.argv
 
 
+frame_seconds = lame.SAMPLES_PER_FRAME / 44100.0
+
+
 class Listeners(list):
     def __init__(self, queue, name):
         self.__queue = queue
         self.__name = name
         self.__packet = None
+        self.__last_send = None
+        self.__lag = 0
         list.__init__(self)
 
     def append(self, listener):
@@ -40,14 +47,28 @@ class Listeners(list):
 
     def broadcast(self):
         try:
-            self.__packet = self.__queue.get_nowait()
-            for listener in self:
-                listener.write(self.__packet)
-                listener.flush()
+            self.__broadcast()
+            if self.__last_send:
+                self.__lag += (time.time() - self.__last_send) - frame_seconds
+
+            if self.__lag > 0:   # TODO: Doesn't this make this "leading?"
+                log.warning("Queue %s lagging by %2.2f ms. Compensating...",
+                            self.__name, self.__lag * 1000)
+                while self.__lag > 0:
+                    self.__broadcast()
+                    self.__lag -= frame_seconds
+
+            self.__last_send = time.time()
         except Queue.Empty:
             if self.__packet:
                 log.warning("Dropping frames! Queue %s is starving!", self.__name)
             pass
+
+    def __broadcast(self):
+        self.__packet = self.__queue.get_nowait()
+        for listener in self:
+            listener.write(self.__packet)
+            listener.flush()
 
 
 class StreamHandler(tornado.web.RequestHandler):
@@ -132,8 +153,7 @@ def start():
     )
 
     frame_sender = tornado.ioloop.PeriodicCallback(
-        StreamHandler.stream_frames,
-        (float(lame.SAMPLES_PER_FRAME) / mixer.samplerate) * 1000
+        StreamHandler.stream_frames, frame_seconds * 1000
     )
     frame_sender.start()
 
@@ -147,11 +167,23 @@ def add_tracks(track_queue):
         while test_mode:
             track_queue.put({})
 
-        offsets = range(0, 40)
+        l = 1000
+
+        offsets = range(0, 4) * l
         shuffle(offsets)
         for i in offsets:
-            tracks = filter(good_track, client.get('/tracks', order='hotness', limit=20, offset=i))
+            tracks = client.get('/tracks', order='hotness', limit=l, offset=i)
+            tracks = filter(good_track, tracks)
+            for track in tracks:
+                if track.bpm:
+                    print "track", track.title, "has bpm", track.bpm
+
+            for track in sorted(tracks, key=attrgetter('bpm')):
+                if track.bpm:
+                    print "track", track.title, "has bpm", track.bpm
+
             shuffle(tracks)
+
             for track in tracks:
                 log.info("Adding new track.")
                 track_queue.put(track.obj)
