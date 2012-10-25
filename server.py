@@ -60,12 +60,14 @@ class Listeners(list):
 
             self.__last_send = time.time()
         except Queue.Empty:
-            if self.__packet:
+            if self.__packet and not self.__starving:
+                self.__starving = True
                 log.warning("Dropping frames! Queue %s is starving!", self.__name)
             pass
 
     def __broadcast(self):
         self.__packet = self.__queue.get_nowait()
+        self.__starving = False
         for listener in self:
             listener.write(self.__packet)
             listener.flush()
@@ -116,6 +118,7 @@ class BufferedReadQueue(Queue.Queue):
         try:
             while True:
                 self.put(self.raw.get())
+                print "In buffer: %2.2fs of audio" % (frame_seconds * self.buffered)
         except:
             pass
 
