@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>forever.fm</title>
+		<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+        <meta name="description" content="Bork." />
+		
+		<meta name="og:title" content="forever.fm" />
+		<meta name="og:type" content="non_profit" />
+		<meta name="og:url" content="http://forever.fm/" />
+		<meta name="og:image" content="http://the.wubmachine.com/static/img/coverart.png" />
+		<meta name="og:description" content="The automagic dubstep remixer." />
+		<meta name="fb:admins" content="877490643" />
+
+		<link rel="shortcut icon" type="image/png" href="static/img/icon.png" />
+        <link rel="image_src" type="image/png" href="http://the.wubmachine.com/static/img/coverart.png" />
+        <link href='http://fonts.googleapis.com/css?family=Signika:300' rel='stylesheet' type='text/css'>
+        <link href='{{ compiled('style.scss') }}' rel='stylesheet' type='text/css' />
+        <link href='{{ compiled(
+          'flashblock.css',
+          '360player.css',
+          '360player-visualization.css'
+        ) }}' rel='stylesheet' type='text/css' />
+
+        <script type="text/javascript"
+                src='https://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js'></script>
+        <script type="text/javascript" src='{{ compiled(
+          'soundmanager2-nodebug-jsmin.js',
+          'berniecode-animator.js',
+          '360player.js'
+          ) }}'></script>
+        <script type="text/javascript" src='{{ compiled('socket.io.js') }}'></script>
+        <script type="text/javascript" src='{{ compiled('front.coffee') }}'></script>
+        <script type="text/javascript">
+          {% if not debug %}
+              var _gaq = _gaq || [];
+              _gaq.push(['_setAccount', 'UA-6427057-18']);
+              _gaq.push(['_setDomainName', '.forever.fm']);
+              _gaq.push(['_trackPageview']);
+
+              (function() {
+                var ga = document.createElement('script');
+                ga.type = 'text/javascript';
+                ga.async = true;
+                ga.src = ('https:' == document.location.protocol ? 'https://ssl'
+                  : 'http://www') + '.google-analytics.com/ga.js';
+                var s = document.getElementsByTagName('script')[0];
+                s.parentNode.insertBefore(ga, s);
+              })();
+          {% end %}
+        </script>
+	</head>
+    <body>
+      <div id="menu">
+        <h1>
+          Forever.FM
+        </h1>
+        <h2>
+          Your Infinite DJ
+        </h2>
+        <div id="player">
+          <div id="sm2-container"></div>
+          <div class="ui360 ui360-vis">
+            <a href="/all.mp3" type="audio/mpeg"></a>
+          </div>
+        </div>
+      </div>
+      <div id="content">
+        <div id="waveform"></div>
+      </div>
+	</body>
+</html>
+

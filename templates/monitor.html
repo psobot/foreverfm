@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Logs & Stats for the Wub Machine</title>
+        <link rel="shortcut icon" type="image/png" href="/static/img/icon.png" />
+        <link href='{{ compiled("monitor.scss") }}' rel='stylesheet' type='text/css' />
+        <link href='{{ compiled("monitor_listen.css") }}' rel='stylesheet' type='text/css' />
+        <script type="text/javascript" src="http://code.jquery.com/jquery-1.7.2.min.js"></script>
+        <script type="text/javascript">{{ config }}</script>
+        <script type="text/javascript" src="{{ compiled("highcharts.js") }}"> </script>
+        <script src="{{ compiled("socket.io.js") }}"></script>
+        <script type="text/javascript" src='{{ compiled("jquery.timeago.js") }}'></script>
+        <script type="text/javascript" src='{{ compiled("open.js") }}'></script>
+        <script type="text/javascript" src="{{ compiled("monitor_listen.js") }}"></script>
+        <script type="text/javascript" src="{{ compiled("monitor.coffee") }}"></script>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/> 
+        <meta name="robots" content="noindex" />
+        <meta name="format-detection" content="telephone=no">
+        <meta name = "viewport" content = "width=device-width">
+    </head>
+    <body>
+        <div id="top">
+            {{ overview }}
+            <div id="songs"></div>
+        </div>
+        <div id="focus"></div>
+        <ul id="tabs">
+          <li><a href='#running' class='{{'selected' if running_count else ''}} left'>Running (<span>{{ running_count }}</span>)</a></li>
+          <li><a href='#queued'>Queued (<span>{{ queued_count }}</span>)</a></li>
+          <li><a href='#failed'>Failed</a></li>
+          <li><a href='#successful' class='{{'selected' if not running_count else ''}}'>Finished</a></li>
+          <li><a href='#shared' class='right'>Shared</a></li>
+        </ul>
+        <div id="running" class="scroll {{'visible' if running_count else ''}}">{{ running }}</div>
+        <div id="queued" class="scroll">{{ queued }}</div>
+        <div id="failed" class="scroll">{{ failed }}</div>
+        <div id="successful" class="scroll {{'visible' if not running_count else ''}}">{{ successful }}</div>
+        <div id="shared" class="scroll">{{ shared }}</div>
+    </body>
+</html>

@@ -1,6 +1,7 @@
-*cache/*
+cache/*.pickle
 log.txt
 log.txt*
 *.mp3
 *.pyc
-
+static/assets/*
+static/waveforms/*.png

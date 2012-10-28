@@ -33,7 +33,7 @@ def colorz(filename, n=3):
     points = get_points(img)
     clusters = kmeans(points, n, 1)
     rgbs = [map(int, c.center.coords) for c in clusters]
-    return map(rtoh, rgbs)
+    return rgbs
 
 
 def euclidean(p1, p2):

@@ -1,0 +1,62 @@
+body {
+  padding: 0;
+  margin: 0;
+  background: url(/static/img/background.png) #d5d5d5;
+
+  #menu {
+    background: rgba(1.0, 1.0, 1.0, 0.55);
+    width: 284px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    font-family: "Signika", "Meta", "Helvetica", "Arial", sans-serif;
+    font-weight: 300;
+    z-index: 5;
+    
+    h1 {
+      background: url(/static/img/logo.png) no-repeat top center;
+      
+      text-align: center;
+      font-weight: 300;
+
+      margin: 30px auto 0;
+      padding-top: 246px;
+      font-size: 54px;
+
+      text-transform: lowercase;
+    }
+
+    h2 {
+      font-weight: 300;
+      text-align: center;
+      color: #ccc;
+      font-size: 35px;
+      margin: 0;
+      text-transform: lowercase;
+    }
+
+    #player {
+      width: 256px;
+      margin: 44px 22px 4px;
+    }
+  }
+  
+  #content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    width: 100%;
+    #waveform {
+      position: absolute;
+      top: 420px;
+      height: 280px;
+      width: 100%;
+      .segment {
+        float: left;
+        height: 280px;
+      }
+    }
+  }
+}

@@ -13,6 +13,10 @@ import soundcloud
 import lame
 import time
 from metadata import Metadata
+from assetcompiler import compiled
+import scwaveform
+import json
+from sockethandler import SocketHandler
 
 client = soundcloud.Client(client_id="b08793cf5964f5571db86e3ca9e5378f")
 Metadata.client = client
@@ -26,11 +30,17 @@ logging.basicConfig(format="%(asctime)s P%(process)-5d (%(levelname)8s) %(module
 log = logging.getLogger(__name__)
 
 import sys
-test_mode = 'test' in sys.argv
+test = 'test' in sys.argv
+frontend = 'frontend' in sys.argv
+stream = not frontend
 
 
 frame_seconds = lame.SAMPLES_PER_FRAME / 44100.0
 LAG_LIMIT = 2  # seconds. If we're lagging by this much, drop packets and try again.
+
+template_dir = "templates/"
+templates = tornado.template.Loader(template_dir)
+templates.autoescape = None
 
 
 class Listeners(list):
@@ -82,6 +92,47 @@ class Listeners(list):
         for listener in self:
             listener.write(self.__packet)
             listener.flush()
+
+
+class MainHandler(tornado.web.RequestHandler):
+    def get(self):
+        debug = self.get_argument('__debug', None)
+        if debug is None:
+            debug = self.request.host.startswith("localhost")
+        else:
+            debug = debug in ["True", 1, "on"]
+        kwargs = {
+            'debug': debug,
+            'compiled': compiled,
+        }
+        try:
+            if test:
+                s = open(template_dir + 'index.html').read()
+                content = tornado.template.Template(s).generate(**kwargs)
+            else:
+                content = templates.load('index.html').generate(**kwargs)
+
+            self.write(content)
+        except Exception, e:
+            log.error(e)
+            tornado.web.RequestHandler.send_error(self, 500)
+
+
+ACTION_LIMIT = 10
+
+
+class InfoHandler(tornado.web.RequestHandler):
+    actions = []
+
+    @classmethod
+    def add(self, data):
+        if len(self.actions) > ACTION_LIMIT:  # TODO: Use time instead
+            self.actions = reversed(reversed(self.actions)[:ACTION_LIMIT])
+        self.actions.append(data)
+        SocketHandler.on_data(data)
+
+    def get(self):
+        self.write(json.dumps(self.actions))
 
 
 class StreamHandler(tornado.web.RequestHandler):
@@ -140,16 +191,24 @@ class BufferedReadQueue(Queue.Queue):
 def start():
     track_queue = multiprocessing.Queue(1)
     v2_queue = BufferedReadQueue()
+    info_queue = multiprocessing.Queue()
 
-    mixer = Mixer(iqueue=track_queue, oqueues=(v2_queue.raw,))
+    mixer = Mixer(iqueue=track_queue,
+                  oqueues=(v2_queue.raw,),
+                  infoqueue=info_queue)
     mixer.start()
 
     at = threading.Thread(target=add_tracks, args=(track_queue,))
     at.daemon = True
-    at.start()
+    if stream:
+        at.start()
+
+    pi = threading.Thread(target=parse_info, args=(info_queue,))
+    pi.daemon = True
+    pi.start()
 
     class SocketConnection(tornadio2.conn.SocketConnection):
-        __endpoints__ = {}
+        __endpoints__ = {"/info.websocket": SocketHandler}
 
     stream_routes = StreamHandler.init_streams([
         (r"/all.mp3", "All", v2_queue)
@@ -160,6 +219,8 @@ def start():
             # Static assets for local development
             (r"/(favicon.ico)", tornado.web.StaticFileHandler, {"path": "static/img/"}),
             (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": "static/"}),
+            (r"/all.json", InfoHandler),
+            (r"/", MainHandler)
         ] + stream_routes),
         socket_io_port=8193,
         enabled_protocols=['websocket', 'xhr-multipart', 'xhr-polling', 'jsonp-polling']
@@ -177,8 +238,10 @@ def start():
 def add_tracks(track_queue):
     sent = 0
     try:
-        while test_mode:
-            track_queue.put({})
+        while test:
+            tracks = client.get('/tracks', q='sobot', license='cc-by', limit=2)
+            for track in tracks:
+                track_queue.put(track.obj)
 
         l = 1000
 
@@ -202,9 +265,54 @@ def add_tracks(track_queue):
                 track_queue.put(track.obj)
                 sent += 1
                 log.info("Added new track.")
-                log.info("Track colour is %s.", Metadata(track).find_color())
     finally:
         pass
+
+
+def parse_info(info_queue):
+    """
+    Listen to streams of info from the remixer process and generate proper
+    metadata about it. I.e.: Waveform images, colours, and the frontend data.
+
+    TODO: Make this stream-agnostic (ideally, move info parsing into each stream.)
+    """
+    while True:
+        action = info_queue.get()
+        fname = "static/waveforms/%d-%s.png" % (action['time'], action['action'])
+        if len(action['tracks']) == 2:
+            m1 = Metadata(action['tracks'][0]['metadata'])
+            s1 = action['tracks'][0]['start']
+            e1 = action['tracks'][0]['end']
+
+            m2 = Metadata(action['tracks'][1]['metadata'])
+            s2 = action['tracks'][1]['start']
+            e2 = action['tracks'][1]['end']
+
+            log.info("Processing metadata for %s -> %s, (%2.2fs %2.2fs) -> (%2.2fs, %2.2fs).",
+                        m1.title, m2.title, s1, s2, e1, e2)
+
+            a = open(fname, 'w')
+            a.write(scwaveform.generate([s1, s2], [e1, e2], [m1.color, m2.color],
+                                        [m1.waveform_url, m2.waveform_url],
+                                        [m1.duration, m2.duration],
+                                        action['duration']))
+            a.close()
+        else:
+            for track in action['tracks']:
+                metadata = Metadata(track['metadata'])
+                start = track['start']
+                end = track['end']
+
+                log.info("Processing metadata for %s, %2.2fs -> %2.2fs.",
+                            metadata.title, start, end)
+                a = open(fname, 'w')
+                a.write(scwaveform.generate(start, end, metadata.color,
+                                            metadata.waveform_url, metadata.duration,
+                                            action['duration']))
+                a.close()
+        action['waveform'] = fname
+        action['width'] = int(action['duration'] * scwaveform.DEFAULT_SPEED)
+        InfoHandler.add(action)
 
 if __name__ == "__main__":
     start()

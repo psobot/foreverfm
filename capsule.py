@@ -12,18 +12,17 @@ Heavily modified by Peter Sobot for integration with forever.fm.
 
 import threading
 import multiprocessing
-from echonest.action import make_stereo
+from echonest.action import make_stereo, Blend
 from audio import LocalAudioFile, assemble
 
 from capsule_support import order_tracks, resample_features, \
                             timbre_whiten, initialize, make_transition, terminate, \
-                            FADE_OUT, display_actions, is_valid, LOUDNESS_THRESH
+                            FADE_OUT, is_valid, LOUDNESS_THRESH
 import traceback
 import time
 import logging
 import cStringIO
 from lame import Lame
-import numpy
 
 import soundcloud
 client = soundcloud.Client(client_id="6325e96fcef18547e6552c23b4c0788c")
@@ -32,17 +31,18 @@ logging.basicConfig(format="%(asctime)s P%(process)-5d (%(levelname)8s) %(module
 log = logging.getLogger(__name__)
 
 import sys
-test_mode = 'test' in sys.argv
+test = 'test' in sys.argv
 
 import gc
 
 
 class Mixer(multiprocessing.Process):
-    def __init__(self, iqueue, oqueues,
+    def __init__(self, iqueue, oqueues, infoqueue,
                  settings=({},), initial=None,
                  max_play_time=300, transition_time=30,
                  safety_buffer=30, samplerate=44100):
         self.iqueue = iqueue
+        self.infoqueue = infoqueue
 
         self.encoders = []
         if len(oqueues) != len(settings):
@@ -163,17 +163,8 @@ class Mixer(multiprocessing.Process):
             e.start()
 
         try:
-            while test_mode:
-                import wave
-                f = wave.open("test.wav")
-                a = numpy.frombuffer(f.readframes(f.getnframes()), dtype=numpy.int16).reshape((-1, 2))
-                self.encode(a)
-
-            renderer = display_actions()
-            renderer.send(None)
+            ctime = None
             for i, actions in enumerate(self.loop()):
-                for action in actions:
-                    log.info(renderer.send(action))
                 _a = time.time()
                 log.info("Rendering audio data...")
                 ADs = [a.render() for a in actions]
@@ -184,6 +175,32 @@ class Mixer(multiprocessing.Process):
                 log.info("Assembled in %fs!", time.time() - _a)
                 del ADs
                 gc.collect()
+                if not ctime:
+                    ctime = time.time()
+                for a in actions:
+                    d = {
+                        'time': ctime,
+                        'action': a.__class__.__name__.split(".")[-1],
+                        'duration': a.duration
+                    }
+                    if isinstance(a, Blend):
+                        d['tracks'] = [{
+                            "metadata": a.t1._metadata,
+                            "start": a.l1[0][0],
+                            "end": sum(a.l1[-1])
+                        }, {
+                            "metadata": a.t2._metadata,
+                            "start": a.l2[0][0],
+                            "end": sum(a.l2[-1])
+                        }]
+                    else:
+                        d['tracks'] = [{
+                            "metadata": a.track._metadata,
+                            "start": a.start,
+                            "end": a.start + a.duration
+                        }]
+                    self.infoqueue.put(d)
+                    ctime += a.duration
                 self.encode(out.data)
         except:
             traceback.print_exc()
