@@ -2,9 +2,11 @@ soundManager.setup
   url: '/static/flash/'
 
 class Waveform
+  speed: 5
   constructor: (@canvas) ->
     @last = +new Date
-    @sub = 0
+    @rem = 0
+    @left = $("#menu").outerWidth()
     @images = []
     @context = @canvas.getContext "2d"
     @canvas.width = window.innerWidth
@@ -14,30 +16,35 @@ class Waveform
     now = +new Date
     delta = (now - @last) / 1000
     @last = now
-    
-    px = @sub + 5 * delta
-    left = -1 * parseInt px
-    @sub += px + left
+    unless window.soundManager.sounds.ui360Sound0? && window.soundManager.sounds.ui360Sound0.paused
+      px = (@speed * delta) + @rem
+      @rem = px - parseInt(px)
+      @left += -1 * parseInt(px)
 
-    for i in [0...@images.length]
-      if left + @images[i].width < 0
-        @images.splice(i, 1) 
-        i -= 1
+      removals = []
+      for i in [0...@images.length]
+        if @left + @images[i].width < 0
+          removals.push i
+      
+      for i in [0...removals]
+        @left += @images[removals[i] - i].width
+        @images.splice(i, 1)
 
-    @context.clearRect 0, 0, @canvas.width, @canvas.height
+      @context.clearRect 0, 0, @canvas.width, @canvas.height
 
-    right = -@sub
-    for image in @images
-      @context.drawImage image, Math.round(right), 0
-      right += image.width
+      right = @left
+      for image in @images
+        @context.drawImage image, Math.round(right), 0
+        right += image.width
 
     me = this
-    setTimeout((-> me.draw()), 500)
+    setTimeout((-> me.draw()), 100)
     
   process: (frame) ->
     img = new Image
     me = this
     img.onload = ->
+      me.left -= parseInt((+new Date)/1000 - frame.time)
       me.images.push img
     img.src = frame.waveform
       

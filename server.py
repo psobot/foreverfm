@@ -239,7 +239,7 @@ def add_tracks(track_queue):
     sent = 0
     try:
         while test:
-            tracks = client.get('/tracks', q='sobot', license='cc-by', limit=2)
+            tracks = client.get('/tracks', q='sobot', license='cc-by', limit=6)
             for track in tracks:
                 track_queue.put(track.obj)
 

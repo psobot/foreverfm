@@ -150,8 +150,11 @@ class Mixer(multiprocessing.Process):
                                       self.transition_time)
                 self.tracks = self.tracks[1:]
             log.info("Waiting for a new track.")
-            self.add_track(self.iqueue.get())  # TODO: Extend me to allow multiple tracks.
-            log.info("Got a new track.")
+            try:
+                self.add_track(self.iqueue.get())  # TODO: Extend me to allow multiple tracks.
+                log.info("Got a new track.")
+            except ValueError:
+                log.warning("Track too short! Trying another.")
 
         # Last chunk. Should contain 1 instruction: fadeout.
         yield terminate(self.tracks[-1], FADE_OUT)
