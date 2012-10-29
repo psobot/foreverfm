@@ -2,9 +2,12 @@ soundManager.setup
   url: '/static/flash/'
 
 class Waveform
-  constructor: (@div) ->
+  constructor: (@canvas) ->
     @last = +new Date
-    @left = 0
+    @sub = 0
+    @images = []
+    @context = @canvas.getContext "2d"
+    @canvas.width = window.innerWidth
     @draw()
 
   draw: ->
@@ -12,31 +15,32 @@ class Waveform
     delta = (now - @last) / 1000
     @last = now
     
-    @left -= 5 * delta
+    px = @sub + 5 * delta
+    left = -1 * parseInt px
+    @sub += px + left
 
-    if @div.children.length > 0
-      first_width = parseInt @div.children[0].style.width
-      if -1 * @left > first_width
-        console.log first_width, @div.style.left
-        @div.removeChild @div.children[0]
-        @left += first_width
-    
-    @div.style.left = @left + "px"
+    for i in [0...@images.length]
+      if left + @images[i].width < 0
+        @images.splice(i, 1) 
+        i -= 1
+
+    @context.clearRect 0, 0, @canvas.width, @canvas.height
+
+    right = -@sub
+    for image in @images
+      @context.drawImage image, Math.round(right), 0
+      right += image.width
 
     me = this
-    window.requestAnimationFrame( -> me.draw() )
+    setTimeout((-> me.draw()), 500)
     
-
   process: (frame) ->
-    @div.innerHTML += """
-      <div class="segment"
-           data-duration="#{frame.duration}"
-           data-start="#{frame.start}"
-           style="width: #{frame.width}px;
-                  background-image: url(#{frame.waveform});"
-      ></div>
-    """
-    @div.children[@div.children.length - 1].classList.add "move"
+    img = new Image
+    me = this
+    img.onload = ->
+      me.images.push img
+    img.src = frame.waveform
+      
 
 $(document).ready ->
   w = new Waveform document.getElementById "waveform"

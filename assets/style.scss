@@ -48,33 +48,10 @@ body {
     left: 0;
     z-index: 0;
     width: 100%;
-    #waveform_container {
+    #waveform {
       position: absolute;
       top: 420px;
       height: 280px;
-      width: 100%;
-      overflow: hidden;
-      #waveform {
-        height: 280px;
-        width: 3000px;
-        position: absolute;
-        left: 0;
-        top: 0;
-        .segment {
-          position: relative;
-          float: left;
-          height: 280px;
-          opacity: 0;
-          
-          -webkit-transition:   opacity 1s;
-          -moz-transition:      opacity 1s;
-          -o-transition:        opacity 1s;
-          transition:           opacity 1s;
-        }
-        .segment.move {
-          opacity: 1;
-        }
-      }
     }
   }
 }
