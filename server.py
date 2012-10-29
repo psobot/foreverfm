@@ -126,8 +126,8 @@ class InfoHandler(tornado.web.RequestHandler):
 
     @classmethod
     def add(self, data):
-        if len(self.actions) > ACTION_LIMIT:  # TODO: Use time instead
-            self.actions = reversed(reversed(self.actions)[:ACTION_LIMIT])
+        while len(self.actions) > ACTION_LIMIT:  # TODO: Use time instead
+            self.actions.pop(0)
         self.actions.append(data)
         SocketHandler.on_data(data)
 
