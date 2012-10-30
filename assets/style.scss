@@ -1,7 +1,11 @@
+html { width: 100%; }
 body {
   padding: 0;
   margin: 0;
   background: url(/static/img/background.png) #d5d5d5;
+  font-family: "Signika", "Meta", "Helvetica", "Arial", sans-serif;
+  font-weight: 300;
+  width: 100%;
 
   #menu {
     background: rgba(1.0, 1.0, 1.0, 0.55);
@@ -10,8 +14,6 @@ body {
     top: 0;
     left: 0;
     height: 100%;
-    font-family: "Signika", "Meta", "Helvetica", "Arial", sans-serif;
-    font-weight: 300;
     z-index: 5;
     
     h1 {
@@ -48,6 +50,181 @@ body {
     left: 0;
     z-index: 0;
     width: 100%;
+
+    .track_container {
+      position: relative;
+      height: 450px;
+    }
+
+    .tracks {
+      position: absolute;
+      left: 284px;
+      right: 0;
+      padding: 40px;
+      .track {
+        height: 40px;
+        margin: 10px 0;
+        text-decoration: none;
+        color: #000;
+        
+        &.hidden { opacity: 0; }
+        &.new { margin-bottom: 500px; opacity: 0; }
+        -webkit-transition: opacity 1s ease-out, height 1s, margin-bottom 1s ease-out;
+        -moz-transition:    opacity 1s ease-out, height 1s, margin-bottom 1s ease-out;
+        -o-transition:      opacity 1s ease-out, height 1s, margin-bottom 1s ease-out;
+        transition:         opacity 1s ease-out, height 1s, margin-bottom 1s ease-out;
+
+        .coverart {
+          position: relative;
+          float: left;
+          margin: 0 10px 0 0;
+          height: 40px;
+          -webkit-transition: height 1s;
+          -moz-transition:    height 1s;
+          -o-transition:      height 1s;
+          transition:         height 1s;
+          overflow: hidden;
+          img {
+            -webkit-transition: margin-top 1s;
+            -moz-transition:    margin-top 1s;
+            -o-transition:      margin-top 1s;
+            transition:         margin-top 1s;
+            margin-top: -30px;
+          }
+        }
+        .text {
+          padding-top: 0;
+          -webkit-transition: padding-top 1s;
+          -moz-transition:    padding-top 1s;
+          -o-transition:      padding-top 1s;
+          transition:         padding-top 1s;
+
+          font-size: 32px;
+          .title {
+            -webkit-transition: font-size 1s;
+            -moz-transition:    font-size 1s;
+            -o-transition:      font-size 1s;
+            transition:         font-size 1s;
+          }
+          .artist {
+            opacity: 0.3;
+          }
+        }
+        .stats {
+          -webkit-transition: height 1s, margin-top 1s;
+          -moz-transition:    height 1s, margin-top 1s;
+          -o-transition:      height 1s, margin-top 1s;
+          transition:         height 1s, margin-top 1s;
+
+          height: 0;
+          margin-top: 0;
+          overflow: hidden;
+
+          color: #a4a4a4;
+          font-size: 10pt;
+
+          span.count {
+            padding: 0px 5px 0 15px;
+          }
+          span.playback.count {
+            background: url(/static/img/sc_play.png) left center no-repeat;
+          }
+          span.download.count {
+            background: url(/static/img/sc_down.png) left center no-repeat;
+          }
+          span.favoritings.count {
+            background: url(/static/img/sc_heart.png) left center no-repeat;
+          }
+
+        }
+      }
+    }
+
+    .tracks#tracks {
+      bottom: 0;
+
+      .track {
+        height: 0;
+        display: none;
+      }
+
+      @for $i from 0 through 5 {
+        .track:nth-last-child($i) {
+          opacity: (1 - $i/6);
+          height: 40px;
+          display: block;
+        }
+      }
+
+      .track:hover {
+        height: 100px;
+        .coverart {
+          height: 100px;
+          img {
+            margin-top: 0;
+          }
+        }
+        .text {
+          padding-top: 28px;
+        }
+        .stats {
+          height: 16px;
+          margin-top: 4px;
+        }
+      }
+
+      .track:last-child {
+        height: 100px;
+        opacity: 1;
+        .coverart {
+          height: 100px;
+          img {
+            margin-top: 0;
+          }
+        }
+        .text {
+          padding-top: 0;
+          .title {
+            display: block;
+            font-size: 40px;
+          }
+          .artist {
+            display: block;
+            opacity: 0.5;
+            font-size: 20px;
+          }
+        }
+        .stats {
+          height: 16px;
+          margin-top: 4px;
+        }
+      }
+    }
+
+    .tracks#done {
+      position: absolute;
+      top: 700px;
+      left: 284px;
+      right: 0;
+      overflow: hidden;
+      padding: 0 40px;
+
+      .track {
+        display: none;
+      }
+      .track.hidden {
+        display: block;
+        height: 0;
+      }
+      @for $i from 0 through 1 {
+        .track:nth-child($i) {
+          opacity: (0.6 - $i/5);
+          height: 40px;
+          display: block;
+        }
+      }
+    }
+
     #waveform {
       position: absolute;
       top: 420px;

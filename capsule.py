@@ -12,7 +12,7 @@ Heavily modified by Peter Sobot for integration with forever.fm.
 
 import threading
 import multiprocessing
-from echonest.action import make_stereo, Blend
+from action import make_stereo, Blend
 from audio import LocalAudioFile, assemble
 
 from capsule_support import order_tracks, resample_features, \
@@ -87,7 +87,14 @@ class Mixer(multiprocessing.Process):
 
     def get_stream(self, x):
         #   TODO: Extend me to deal with possible downloadable tracks
-        return cStringIO.StringIO(client.get(x['stream_url']).raw_data)
+        fname = "cache/%d.mp3" % x['id']
+        try:
+            return cStringIO.StringIO(open(fname, 'r').read())
+        except IOError:
+            a = cStringIO.StringIO(client.get(x['stream_url']).raw_data)
+            open(fname, 'w').write(a.read())
+            a.seek(0)
+            return a
 
     def analyze(self, x):
         if isinstance(x, list):
@@ -132,26 +139,29 @@ class Mixer(multiprocessing.Process):
     def loop(self):
         while len(self.tracks) < 2:
             log.info("Waiting for a new track.")
-            self.add_track(self.iqueue.get())  # TODO: Extend me to allow multiple tracks.
+            self.add_track(self.iqueue.get())  # TODO: Extend to allow multiple tracks.
             log.info("Got a new track.")
 
         # Initial transition. Should contain 2 instructions: fadein, and playback.
         inter = self.tracks[0].analysis.duration - self.transition_time * 3
-        yield initialize(self.tracks[0], inter,
-                         self.transition_time, 10)
+        yield initialize(self.tracks[0], inter, self.transition_time, 10)
 
         while not self.__stop:
             while len(self.tracks) > 1:
-                stay_time = min(self.tracks[0].analysis.duration - self.transition_time * 3,
-                                self.tracks[1].analysis.duration - self.transition_time * 3)
-                yield make_transition(self.tracks[0],
+                stay_time = min(self.tracks[0].analysis.duration
+                                 - self.transition_time * 3,
+                                self.tracks[1].analysis.duration
+                                 - self.transition_time * 3)
+                trans = make_transition(self.tracks[0],
                                       self.tracks[1],
                                       stay_time,
                                       self.transition_time)
-                self.tracks = self.tracks[1:]
+                del self.tracks[0]
+                gc.collect()
+                yield trans
             log.info("Waiting for a new track.")
             try:
-                self.add_track(self.iqueue.get())  # TODO: Extend me to allow multiple tracks.
+                self.add_track(self.iqueue.get())  # TODO: Allow multiple tracks.
                 log.info("Got a new track.")
             except ValueError:
                 log.warning("Track too short! Trying another.")

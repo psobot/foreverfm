@@ -1,21 +1,22 @@
-from capsule import Mixer
+import json
+import lame
+import time
+import base64
 import Queue
+import logging
+import threading
+import soundcloud
+import scwaveform
 import tornado.web
 import tornado.ioloop
 import tornado.template
 import tornadio2.server
-import threading
-import logging
-from random import shuffle
-from operator import attrgetter
 import multiprocessing
-import soundcloud
-import lame
-import time
+from capsule import Mixer
+from random import shuffle
 from metadata import Metadata
+from operator import attrgetter
 from assetcompiler import compiled
-import scwaveform
-import json
 from sockethandler import SocketHandler
 
 client = soundcloud.Client(client_id="b08793cf5964f5571db86e3ca9e5378f")
@@ -118,18 +119,22 @@ class MainHandler(tornado.web.RequestHandler):
             tornado.web.RequestHandler.send_error(self, 500)
 
 
-ACTION_LIMIT = 10
-
-
 class InfoHandler(tornado.web.RequestHandler):
     actions = []
+    offset = 60  # extra seconds to save info for
 
     @classmethod
     def add(self, data):
-        while len(self.actions) > ACTION_LIMIT:  # TODO: Use time instead
-            self.actions.pop(0)
+        self.clean()
         self.actions.append(data)
         SocketHandler.on_data(data)
+
+    @classmethod
+    def clean(cls):
+        now = time.time()
+        while cls.actions and cls.actions[0]['time'] \
+                     + cls.actions[0]['duration'] + cls.offset < now:
+            cls.actions.pop(0)
 
     def get(self):
         self.write(json.dumps(self.actions))
@@ -231,6 +236,11 @@ def start():
     )
     frame_sender.start()
 
+    cleaner = tornado.ioloop.PeriodicCallback(
+        InfoHandler.clean, 5 * 1000
+    )
+    cleaner.start()
+
     application.listen(8192)
     tornadio2.server.SocketServer(application)
 
@@ -239,9 +249,10 @@ def add_tracks(track_queue):
     sent = 0
     try:
         while test:
-            tracks = client.get('/tracks', q='sobot', license='cc-by', limit=6)
+            tracks = client.get('/tracks', q='sobot', license='cc-by', limit=4)
             for track in tracks:
-                track_queue.put(track.obj)
+                if track.title != "Bright Night":
+                    track_queue.put(track.obj)
 
         l = 1000
 
@@ -278,7 +289,6 @@ def parse_info(info_queue):
     """
     while True:
         action = info_queue.get()
-        fname = "static/waveforms/%d-%s.png" % (action['time'], action['action'])
         if len(action['tracks']) == 2:
             m1 = Metadata(action['tracks'][0]['metadata'])
             s1 = action['tracks'][0]['start']
@@ -291,12 +301,11 @@ def parse_info(info_queue):
             log.info("Processing metadata for %s -> %s, (%2.2fs %2.2fs) -> (%2.2fs, %2.2fs).",
                         m1.title, m2.title, s1, s2, e1, e2)
 
-            a = open(fname, 'w')
-            a.write(scwaveform.generate([s1, s2], [e1, e2], [m1.color, m2.color],
-                                        [m1.waveform_url, m2.waveform_url],
-                                        [m1.duration, m2.duration],
-                                        action['duration']))
-            a.close()
+            a = scwaveform.generate([s1, s2], [e1, e2],
+                                    [m1.color, m2.color],
+                                    [m1.waveform_url, m2.waveform_url],
+                                    [m1.duration, m2.duration],
+                                    action['duration'])
         else:
             for track in action['tracks']:
                 metadata = Metadata(track['metadata'])
@@ -305,12 +314,12 @@ def parse_info(info_queue):
 
                 log.info("Processing metadata for %s, %2.2fs -> %2.2fs.",
                             metadata.title, start, end)
-                a = open(fname, 'w')
-                a.write(scwaveform.generate(start, end, metadata.color,
-                                            metadata.waveform_url, metadata.duration,
-                                            action['duration']))
-                a.close()
-        action['waveform'] = fname
+                a = scwaveform.generate(start, end, metadata.color,
+                                        metadata.waveform_url,
+                                        metadata.duration,
+                                        action['duration'])
+        action['waveform'] = "data:image/png;base64,%s" % \
+                              base64.encodestring(a)
         action['width'] = int(action['duration'] * scwaveform.DEFAULT_SPEED)
         InfoHandler.add(action)
 

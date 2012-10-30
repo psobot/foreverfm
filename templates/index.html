@@ -12,8 +12,8 @@
 		<meta name="og:description" content="The automagic dubstep remixer." />
 		<meta name="fb:admins" content="877490643" />
 
-		<link rel="shortcut icon" type="image/png" href="static/img/icon.png" />
-        <link rel="image_src" type="image/png" href="http://the.wubmachine.com/static/img/coverart.png" />
+		<link rel="shortcut icon" type="image/png" href="/static/img/favicon.png" />
+        <link rel="image_src" type="image/png" href="/static/img/icon.png" />
         <link href='http://fonts.googleapis.com/css?family=Signika:300' rel='stylesheet' type='text/css'>
         <link href='{{ compiled('style.scss') }}' rel='stylesheet' type='text/css' />
         <link href='{{ compiled(
@@ -66,9 +66,11 @@
         </div>
       </div>
       <div id="content">
-        <div id="tracks">
+        <div class="track_container">
+          <div class="tracks" id="tracks" data-limit="5"></div>
         </div>
         <canvas id="waveform" height="280px"></canvas>
+        <div class="tracks" id="done" data-limit="5"></div>
       </div>
 	</body>
 </html>

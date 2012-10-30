@@ -46,15 +46,16 @@ def generate_single(start, end, rgb1, url, o_duration, n_duration, speed):
     ltrb = (int(start * cur_speed), 0, int(end * cur_speed), mask.size[1])
     mask = mask.crop(ltrb)
 
-    rgb2 = [max(x - 50, 0) for x in rgb1]
+    lim = 64
+    if all([c < lim for c in rgb1]):
+        rgb1 = [int(min(x + lim, 255)) for x in rgb1]
+    rgb2 = [max(x - lim, 0) for x in rgb1]
 
-    def channel(i, c):
-        """calculate the value of a single color channel for a single pixel"""
-        return rgb1[c] + int((i * 2.0 / mask.size[1]) * (rgb2[c] - rgb1[c]))
-
-    def color(i):
-        """calculate the RGB value of a single pixel"""
-        return tuple([channel(i, c) for c in range(3)])
+    color = lambda i: \
+        tuple([(rgb1[c] +
+                int((i * 2.0 / mask.size[1]) *
+                    (rgb2[c] - rgb1[c]))
+               ) for c in range(3)])
 
     gradient = Image.new('RGBA', (1, mask.size[1]))
     gradient.putdata([color(i) for i in xrange(mask.size[1])])
