@@ -58,6 +58,7 @@ class Playback(object):
     def render(self):
         # self has start and duration, so it is a valid index into track.
         output = self.track[self]
+        #self.track.remove_upto(self.start + self.duration)
 
         # Normalize volume if necessary
         gain = getattr(self.track, 'gain', None)
@@ -232,7 +233,8 @@ class Crossmatch(Blend):
         """t is a track, l is a list"""
         signal_start = int(l[0][0] * t.sampleRate)
         signal_duration = int((sum(l[-1]) - l[0][0]) * t.sampleRate)
-        vecin = t.data[signal_start:signal_start + signal_duration, :]
+
+        vecin = t[signal_start:signal_start + signal_duration].data
 
         rates = []
         for i in xrange(len(l)):

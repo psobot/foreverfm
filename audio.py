@@ -4,7 +4,6 @@ echonest.audio monkeypatches
 import cPickle
 import cStringIO
 import traceback
-import urllib2
 import errno
 import numpy
 import wave
@@ -16,6 +15,7 @@ import sys
 import logging
 import subprocess
 import uuid
+import gc
 
 from exceptionthread import ExceptionThread
 from monkeypatch import monkeypatch_class
@@ -28,6 +28,8 @@ FFMPEG_ERROR_TIMEOUT = 0.2
 #######
 #   Custom, in-memory FFMPEG decoders
 #######
+
+
 def ffmpeg_error_check(parsestring):
     """Looks for known errors in the ffmpeg output"""
     parse = parsestring.split('\n')
@@ -368,6 +370,8 @@ class AudioData(AudioData):
         if ndarray is not None and self.data is not None:
             self.endindex = len(ndarray)
             self.data[0:self.endindex] = ndarray
+        self.offset = 0
+        self.read_destructively = True
 
     def load(self, file_to_read=None, pcmFormat=numpy.int16):
         if isinstance(self.data, numpy.ndarray):
@@ -498,6 +502,53 @@ class AudioData(AudioData):
                 """
         null.close()
 
+    def __getitem__(self, index):
+        """
+        Fetches a frame or slice. Returns an individual frame (if the index
+        is a time offset float or an integer sample number) or a slice if
+        the index is an `AudioQuantum` (or quacks like one).
+        """
+        if not isinstance(self.data, numpy.ndarray) and self.defer:
+            self.load()
+        if isinstance(index, float):
+            index = int(index * self.sampleRate)
+        elif hasattr(index, "start") and hasattr(index, "duration"):
+            index =  slice(float(index.start), index.start + index.duration)
+
+        if isinstance(index, slice):
+            if (hasattr(index.start, "start") and
+                hasattr(index.stop, "duration") and
+                hasattr(index.stop, "start")) :
+                index = slice(index.start.start, index.stop.start + index.stop.duration)
+
+        if isinstance(index, slice):
+            return self.getslice(index)
+        else:
+            return self.getsample(index)
+
+    def getslice(self, index):
+        "Help `__getitem__` return a new AudioData for a given slice"
+        if not isinstance(self.data, numpy.ndarray) and self.defer:
+            self.load()
+        if isinstance(index.start, float):
+            index = slice(int(index.start * self.sampleRate) - self.offset,
+                            int(index.stop * self.sampleRate) - self.offset, index.step)
+        else:
+            index = slice(index.start - self.offset, index.stop - self.offset)
+        a = AudioData(None, self.data[index], sampleRate=self.sampleRate,
+                            numChannels=self.numChannels, defer=False)
+        if self.read_destructively:
+            self.remove_upto(index.start)
+        return a
+
+    def remove_upto(self, sample):
+        if isinstance(sample, float):
+            sample = int(sample * self.sampleRate)
+        if sample:
+            self.data = numpy.delete(self.data, slice(0, sample), 0)
+            self.offset += sample
+            gc.collect()
+
 
 class LocalAudioFile(LocalAudioFile):
     """
@@ -600,6 +651,7 @@ class AudioQuantumList(AudioQuantumList):
                 aq.render(start=start, to_audio=to_audio, with_source=with_source)
                 start += aq.duration
 
+
 def truncatemix(dataA, dataB, mix=0.5):
     """
     Mixes two "AudioData" objects. Assumes they have the same sample rate
@@ -625,6 +677,7 @@ def genFade(fadeLength, dimensions=1):
     if dimensions == 2:
         return fadeOut[:, numpy.newaxis]
     return fadeOut
+
 
 def fadeEdges(input, fadeLength=50):
     """

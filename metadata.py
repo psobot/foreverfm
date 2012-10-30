@@ -1,7 +1,10 @@
 import colors
 import cStringIO
+import logging
 
 PIXELS_PER_SECOND = 1
+
+log = logging.getLogger(__name__)
 
 
 class Metadata(object):
@@ -33,5 +36,9 @@ class Metadata(object):
             else:
                 art = self.obj['user']['avatar_url']
             fobj = cStringIO.StringIO(self.client.get(art).raw_data)
-            self.__color = colors.colorz(fobj, 1)[0]
+            try:
+                self.__color = colors.colorz(fobj, 1)[0]
+            except:
+                log.error("Could not get artwork colour - defaulting to black.")
+                self.__color = (0, 0, 0)
         return self.__color
