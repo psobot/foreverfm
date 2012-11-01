@@ -13,7 +13,9 @@ Heavily modified by Peter Sobot for integration with forever.fm.
 import threading
 import multiprocessing
 from action import make_stereo, Blend
-from audio import LocalAudioStream, assemble, AudioData
+
+from echonest.audio import assemble
+from audio import LocalAudioStream, AudioData
 
 from capsule_support import order_tracks, resample_features, \
                             timbre_whiten, initialize, make_transition, terminate, \

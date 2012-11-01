@@ -1,8 +1,19 @@
+"""
+ExceptionThread.py
+by Peter Sobot, 2012-04-23
+https://gist.github.com/2386993
+
+Base class for a thread that tracks its own exceptions and
+raises them when joined by the main thread. Can check for
+an exception by doing .join(0) from another thread.
+"""
+
 import Queue
 import threading
 import sys
 
 __author__ = 'psobot'
+
 
 class ExceptionThread(threading.Thread):
     def __init__(self, *args, **kwargs):

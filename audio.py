@@ -17,312 +17,21 @@ import subprocess
 import uuid
 import gc
 import weakref
-from threading import Semaphore
 from exceptionthread import ExceptionThread
 from monkeypatch import monkeypatch_class
 
 #   Sadly, we need to import * - this is a monkeypatch!
-from echonest.audio import *
+from echonest.audio import track, AudioAnalysis,\
+                           EchoNestRemixError, AudioData, LocalAudioFile, AudioQuantumList
+from echonest.support.ffmpeg import ffmpeg, ffmpeg_downconvert, ffmpeg_stream
+import pyechonest.util
 
 FFMPEG_ERROR_TIMEOUT = 0.2
 
 #######
-#   Custom, in-memory FFMPEG decoders
-#######
-
-
-def ffmpeg_error_check(parsestring):
-    """Looks for known errors in the ffmpeg output"""
-    parse = parsestring.split('\n')
-    error_cases = ["Unknown format",        # ffmpeg can't figure out format of input file
-                   "error occur",           # an error occurred
-                   "Could not open",        # user doesn't have permission to access file
-                   "not found",             # could not find encoder for output file
-                   "Invalid data found",    # could not find encoder for output file
-                   "Could not find codec parameters"
-    ]
-    for num, line in enumerate(parse):
-        if "command not found" in line:
-            raise RuntimeError(ffmpeg_install_instructions)
-        for error in error_cases:
-            if error in line:
-                report = "\n\t".join(parse[num:])
-                raise RuntimeError("ffmpeg conversion error:\n\t" + report)
-
-
-def ffmpeg(infile,
-            bitRate=None,
-            numChannels=None,
-            sampleRate=None,
-            verbose=True,
-            uid=None,
-            format=None,
-            lastTry=False):
-    """
-    Executes ffmpeg through the shell to convert or read media files.
-    This custom version does the conversion in-memory - no temp files involved. Quicker, too.
-    """
-    start = time.time()
-
-    filename = None
-    if type(infile) is str or type(infile) is unicode:
-        filename = str(infile)
-
-    command = "en-ffmpeg"
-    if filename:
-        command += " -i \"%s\"" % infile
-    else:
-        command += " -i pipe:0"
-    if bitRate is not None:
-        command += " -ab " + str(bitRate) + "k"
-    if numChannels is not None:
-        command += " -ac " + str(numChannels)
-    if sampleRate is not None:
-        command += " -ar " + str(sampleRate)
-    command += " -f s16le -acodec pcm_s16le pipe:1"
-    logging.getLogger(__name__).info("Calling ffmpeg: %s", command)
-
-    (lin, mac, win) = get_os()
-    p = subprocess.Popen(
-        command,
-        shell=True,
-        stdin=(None if filename else subprocess.PIPE),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        close_fds=(not win)
-    )
-    if filename:
-        f, e = p.communicate()
-    else:
-        infile.seek(0)
-        f, e = p.communicate(infile.read())
-        infile.seek(0)
-
-    if 'Could not find codec parameters' in e and format and not lastTry:
-        logging.getLogger(__name__).warning("FFMPEG couldn't find codec parameters - writing to temp file.")
-        fd, name = tempfile.mkstemp('.' + format)
-        handle = os.fdopen(fd, 'w')
-        infile.seek(0)
-        handle.write(infile.read())
-        handle.close()
-        r = ffmpeg(name,
-                   bitRate=bitRate,
-                   numChannels=numChannels,
-                   sampleRate=sampleRate,
-                   verbose=verbose,
-                   uid=uid,
-                   format=format,
-                   lastTry=True)
-        logging.getLogger(__name__).info("Unlinking temp file at %s...", name)
-        os.unlink(name)
-        return r
-    ffmpeg_error_check(e)
-    mid = time.time()
-    arr = numpy.frombuffer(f, dtype=numpy.int16).reshape((-1, 2))
-    logging.getLogger(__name__).info("Decoded in %ss.", (mid - start))
-    return arr
-
-
-class FFMPEGStreamHandler(ExceptionThread):
-    def __init__(self, infile, p):
-        self.p = p
-        self.infile = infile
-        self.infile.seek(0)
-        self.insize = 2 ** 24
-        self.__s = Semaphore(0)
-        ExceptionThread.__init__(self)
-        self.daemon = True
-        self.running = True
-        self.start()
-
-    def __del__(self):
-        self.finish()
-
-    def run(self):
-        while self.running:
-            self.__s.release()
-            try:
-                self.p.stdin.write(self.infile.read(self.insize))
-            except IOError:
-                break
-            self.__s.acquire()
-
-    def finish(self):
-        self.running = False
-        try:
-            self.p.kill()
-            self.p.wait()
-        except OSError:
-            pass
-
-    #   TODO: Abstract me away from 44100Hz, 2ch 16 bit
-    def read(self, samples):
-        if not self.running:
-            raise ValueError("FFMPEG has already finished!")
-        self.__s.release()
-        arr = numpy.fromfile(self.p.stdout,
-                               dtype=numpy.int16,
-                               count=samples * 2)
-        print "Allocated new Numpy array of size: %d bytes." % arr.nbytes
-        if len(arr) < samples * 2:
-            self.running = False
-        arr = numpy.reshape(arr, (-1, 2))
-        self.__s.acquire()
-        return arr
-
-    def feed(self, samples):
-        self.__s.release()
-        self.p.stdout.read(samples * 4)
-        self.__s.acquire()
-
-
-def ffmpeg_stream(infile, numChannels=None, sampleRate=None):
-    """
-    Executes ffmpeg through the shell to convert or read media files.
-    This custom version does the conversion in-memory - no temp files involved. Quicker, too.
-    """
-    filename = None
-    if type(infile) is str or type(infile) is unicode:
-        filename = str(infile)
-
-    command = "en-ffmpeg"
-    if filename:
-        command += " -i \"%s\"" % infile
-    else:
-        command += " -i pipe:0"
-    if numChannels is not None:
-        command += " -ac " + str(numChannels)
-    if sampleRate is not None:
-        command += " -ar " + str(sampleRate)
-    command += " -f s16le -acodec pcm_s16le pipe:1"
-    logging.getLogger(__name__).info("Calling ffmpeg: %s", command)
-
-    (lin, mac, win) = get_os()
-    p = subprocess.Popen(
-        command,
-        shell=True,
-        stdin=(None if filename else subprocess.PIPE),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        close_fds=(not win)
-    )
-    return FFMPEGStreamHandler(infile, p)
-
-
-def ffmpeg_downconvert(infile, format=None, uid=None, lastTry=False):
-    """
-    Executes ffmpeg through the shell to convert or read media files.
-    This custom version does the conversion in-memory - no temp files involved. Quicker, too.
-    """
-    start = time.time()
-
-    filename = None
-    if type(infile) is str or type(infile) is unicode:
-        filename = str(infile)
-
-    command = "en-ffmpeg"
-    if filename:
-        command += " -i \"%s\"" % infile
-    else:
-        command += " -i pipe:0"
-    command += " -b 32k -f mp3 pipe:1"
-    logging.getLogger(__name__).info("Calling ffmpeg: %s", command)
-
-    (lin, mac, win) = get_os()
-    p = subprocess.Popen(
-        command,
-        shell=True,
-        stdin=(None if filename else subprocess.PIPE),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        close_fds=(not win)
-    )
-    if filename:
-        f, e = p.communicate()
-    else:
-        infile.seek(0)
-        f, e = p.communicate(infile.read())
-        infile.seek(0)
-
-    if 'Could not find codec parameters' in e and format and not lastTry:
-        logging.getLogger(__name__).warning("FFMPEG couldn't find codec parameters - writing to temp file.")
-        fd, name = tempfile.mkstemp('.' + format)
-        handle = os.fdopen(fd, 'w')
-        infile.seek(0)
-        handle.write(infile.read())
-        handle.close()
-        r = ffmpeg_downconvert(name, format=format, uid=uid, lastTry=True)
-        logging.getLogger(__name__).info("Unlinking temp file at %s...", name)
-        os.unlink(name)
-        return r
-    ffmpeg_error_check(e)
-
-    io = cStringIO.StringIO(f)
-    end = time.time()
-    io.seek(0, os.SEEK_END)
-    bytesize = io.tell()
-    io.seek(0)
-    logging.getLogger(__name__).info("Transcoded to 32kbps mp3 in %ss. Final size: %s bytes.",
-                                     (end - start), bytesize)
-    return io
-
-
-#######
-#   More efficient EN methods
-#######
-def getpieces(audioData, segs):
-    """
-    Collects audio samples for output.
-    Returns a new `AudioData` where the new sample data is assembled
-    from the input audioData according to the time offsets in each
-    of the elements of the input segs (commonly an `AudioQuantumList`).
-
-    :param audioData: an `AudioData` object
-    :param segs: an iterable containing objects that may be accessed
-        as slices or indices for an `AudioData`
-    """
-    #calculate length of new segment
-    audioData.load()
-    dur = 0
-    for s in segs:
-        dur += int(s.duration * audioData.sampleRate)
-        # if I wanted to add some padding to the length, I'd do it here
-
-    #determine shape of new array
-    if len(audioData.data.shape) > 1:
-        newshape = (dur, audioData.data.shape[1])
-        newchans = audioData.data.shape[1]
-    else:
-        newshape = (dur,)
-        newchans = 1
-
-    #make accumulator segment
-    newAD = AudioData(shape=newshape, sampleRate=audioData.sampleRate,
-        numChannels=newchans, verbose=audioData.verbose)
-
-    #concatenate segs to the new segment
-    for s in segs:
-        newAD.append(audioData[s])
-        # audioData.unload()
-    return newAD
-
-
-def assemble(audioDataList, numChannels=1, sampleRate=44100, verbose=True):
-    """
-    Collects audio samples for output.
-    Returns a new `AudioData` object assembled
-    by concatenating all the elements of audioDataList.
-
-    :param audioDatas: a list of `AudioData` objects
-    """
-    return AudioData(ndarray=numpy.concatenate([a.data for a in audioDataList]),
-                        numChannels=numChannels,
-                        sampleRate=sampleRate, defer=False, verbose=verbose)
-
-
-#######
 #   Patched, in-memory audio handlers
 #######
+
 
 class AudioAnalysis(AudioAnalysis):
     __metaclass__ = monkeypatch_class
@@ -711,6 +420,12 @@ class LocalAudioFile(LocalAudioFile):
 
 
 class AudioStream(object):
+    """
+    Very much like an AudioData, but vastly more memory efficient.
+    However, AudioStream only supports sequential access - i.e.: one, un-seekable
+    stream of PCM data directly being streamed from FFMPEG.
+    """
+
     def __init__(self, fobj):
         self.sampleRate = 44100
         self.numChannels = 2
@@ -745,7 +460,7 @@ class AudioStream(object):
             index = slice(int(index.start * self.sampleRate),
                             int(index.stop * self.sampleRate), index.step)
         if index.start < self.index:
-            raise ValueError("Cannot seek backwards in AudioStream!")
+            raise ValueError("Cannot seek backwards in AudioStream")
         if index.start > self.index:
             self.stream.feed(index.start - self.index)
         self.index = index.stop
@@ -753,6 +468,18 @@ class AudioStream(object):
         return AudioData(None, self.stream.read(index.stop - index.start),
                             sampleRate=self.sampleRate,
                             numChannels=self.numChannels, defer=False)
+
+    def getsample(self, index):
+        if isinstance(index, float):
+            index = int(index * self.sampleRate)
+        if index >= self.index:
+            self.stream.feed(index.start - self.index)
+            self.index += index
+        else:
+            raise ValueError("Cannot seek backwards in AudioStream")
+
+    def render(self):
+        return self.stream.read()
 
     def finish(self):
         self.stream.finish()
@@ -784,9 +511,12 @@ class LocalAudioStream(AudioStream):
         self.analysis = tempanalysis
         self.analysis.source = weakref.ref(self)
 
-        class hack(object):
-            ndim = 2
-        self.data = hack()
+    class data(object):
+        """
+        Massive hack - certain operations are intrusive and check
+        `.data.ndim`, so in this case, we fake it.
+        """
+        ndim = 2
 
     def __del__(self):
         self.stream.finish()
@@ -832,53 +562,3 @@ class AudioQuantumList(AudioQuantumList):
             for aq in list.__iter__(self):
                 aq.render(start=start, to_audio=to_audio, with_source=with_source)
                 start += aq.duration
-
-
-def truncatemix(dataA, dataB, mix=0.5):
-    """
-    Mixes two "AudioData" objects. Assumes they have the same sample rate
-    and number of channels.
-
-    Mix takes a float 0-1 and determines the relative mix of two audios.
-    i.e., mix=0.9 yields greater presence of dataA in the final mix.
-
-    If dataB is longer than dataA, dataB is truncated to dataA's length.
-    """
-    newdata = AudioData(ndarray=dataA.data, sampleRate=dataA.sampleRate,
-        numChannels=dataA.numChannels, verbose=False)
-    newdata.data *= float(mix)
-    if dataB.endindex > dataA.endindex:
-        newdata.data[:] += dataB.data[:dataA.endindex] * (1 - float(mix))
-    else:
-        newdata.data[:dataB.endindex] += dataB.data[:] * (1 - float(mix))
-    return newdata
-
-
-def genFade(fadeLength, dimensions=1):
-    fadeOut = numpy.linspace(1.0, 0.0, fadeLength) ** 2
-    if dimensions == 2:
-        return fadeOut[:, numpy.newaxis]
-    return fadeOut
-
-
-def fadeEdges(input, fadeLength=50):
-    """
-        Fade in/out the ends of an audioData to prevent clicks.
-        Optional fadeLength argument is the number of samples to fade in/out.
-    """
-    if isinstance(input, AudioData):
-        ad = input.data
-    elif isinstance(input, numpy.ndarray):
-        ad = input
-    else:
-        raise Exception("Cannot fade edges of unknown datatype.")
-    fadeOut = genFade(min(fadeLength, len(ad)), ad.shape[1])
-    ad[0:fadeLength] *= fadeOut[::-1]
-    ad[-1 * fadeLength:] *= fadeOut
-    return input
-
-
-def normalize(audio):
-    #   TODO: Ensure this will work on multiple datatypes.
-    audio.data *= (32760.0 / numpy.max(numpy.abs(audio.data)))
-    return audio
