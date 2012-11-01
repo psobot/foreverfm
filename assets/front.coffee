@@ -175,11 +175,11 @@ class Waveform
 $(document).ready ->
   w = new Waveform document.getElementById "waveform"
 
-  $.getJSON ":8193/all.json", (segments) ->
+  $.getJSON "all.json", (segments) ->
     for segment in segments
       w.process segment
 
-  s = io.connect "/info.websocket"
+  s = io.connect ":8193/info.websocket"
   s.on 'message', (segment) ->
     w.process segment, true
 
