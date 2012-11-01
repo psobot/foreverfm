@@ -175,7 +175,7 @@ class Waveform
 $(document).ready ->
   w = new Waveform document.getElementById "waveform"
 
-  $.getJSON "all.json", (segments) ->
+  $.getJSON ":8193/all.json", (segments) ->
     for segment in segments
       w.process segment
 
