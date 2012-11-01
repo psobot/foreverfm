@@ -13,7 +13,7 @@ class Frame
     @id = "track_#{@tracks[0].metadata.id}"
     @new = if is_new then 'new' else ''
 
-    # hack for development
+    # hack for development... don't wanna do this
     while document.getElementById(@id)
       @id += "_"
 
@@ -35,8 +35,11 @@ class Frame
     if matches?
       [_, @title, _, other] = matches
     
-    #   Remove "Free Download" and such
-    @title = @title.replace /\s*((\[|\()[^\)\]]*(free|download|comment|out now|clip|bonus|preview|teaser|in store)+[^\)\]]*(\]|\))|(OUT NOW (ON \w*)?|free|download|preview|teaser|in store))\s*/i, ""
+    #   Remove "Free Download," "Follow Me" and the like
+    @title = @title.replace /(\s*-*\s*((\[|\()[^\)\]]*(free|download|comment|out now|clip|bonus|preview|teaser|in store|follow)+[^\)\]]*(\]|\))|((OUT NOW( ON \w*)?|free|download|preview|teaser|in store|follow).*$))\s*|\[(.*?)\])/i, ""
+
+    if @title[0] == '"' and @title[@title.length - 1] == '"'
+      @title = @title[1...@title.length - 1].trim()
 
     @img = if @tracks[0].metadata.artwork_url?
              @tracks[0].metadata.artwork_url
@@ -45,6 +48,7 @@ class Frame
     @playcount   = @tracks[0].metadata.playback_count
     @downloads   = @tracks[0].metadata.download_count
     @favoritings = @tracks[0].metadata.favoritings_count
+    @stats = @playcount? and @downloads? and @favoritings
     @url = @tracks[0].metadata.permalink_url
 
   html: ->
@@ -55,11 +59,13 @@ class Frame
         <span class="title">#{@title}</span>
         <span class="artist">#{@artist}</span>
       </div>
-      <div class="stats">
-        <span class="count playback">#{@playcount}</span>
-        <span class="count download">#{@downloads}</span>
-        <span class="count favoritings">#{@favoritings}</span>
+      #{if @stats then "
+      <div class='stats'>
+        <span class='count playback'>#{@playcount}</span>
+        <span class='count download'>#{@downloads}</span>
+        <span class='count favoritings'>#{@favoritings}</span>
       </div>
+      " else ""}
     </div>
     """
 

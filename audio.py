@@ -1,10 +1,7 @@
 """
 echonest.audio monkeypatches
 """
-import cPickle
 import cStringIO
-import traceback
-import errno
 import numpy
 import wave
 import struct
@@ -21,117 +18,10 @@ from exceptionthread import ExceptionThread
 from monkeypatch import monkeypatch_class
 
 #   Sadly, we need to import * - this is a monkeypatch!
-from echonest.audio import track, AudioAnalysis,\
-                           EchoNestRemixError, AudioData, LocalAudioFile, AudioQuantumList
-from echonest.support.ffmpeg import ffmpeg, ffmpeg_downconvert, ffmpeg_stream
-import pyechonest.util
+from echonest.audio import AudioAnalysis, AudioData, LocalAudioFile, AudioQuantumList
+from echonest.support.ffmpeg import ffmpeg
 
 FFMPEG_ERROR_TIMEOUT = 0.2
-
-#######
-#   Patched, in-memory audio handlers
-#######
-
-
-class AudioAnalysis(AudioAnalysis):
-    __metaclass__ = monkeypatch_class
-
-    def __init__(self, initializer, filetype = None, lastTry = False):
-        if type(initializer) is not str and not hasattr(initializer, 'read'):
-            # Argument is invalid.
-            raise TypeError("Argument 'initializer' must be a string \
-                            representing either a filename, track ID, or MD5, or \
-                            instead, a file object.")
-
-        try:
-            if type(initializer) is str:
-                # see if path_or_identifier is a path or an ID
-                if os.path.isfile(initializer):
-                    # it's a filename
-                    self.pyechonest_track = track.track_from_filename(initializer)
-                else:
-                    if initializer.startswith('music://') or \
-                       (initializer.startswith('TR') and
-                        len(initializer) == 18):
-                        # it's an id
-                        self.pyechonest_track = track.track_from_id(initializer)
-                    elif len(initializer) == 32:
-                        # it's an md5
-                        self.pyechonest_track = track.track_from_md5(initializer)
-            else:
-                assert(filetype is not None)
-                initializer.seek(0)
-                try:
-                    self.pyechonest_track = track.track_from_file(initializer, filetype)
-                except (IOError, pyechonest.util.EchoNestAPIError) as e:
-                    if lastTry:
-                        raise
-
-                    if (isinstance(e, IOError)
-                        and (e.errno in [errno.EPIPE, errno.ECONNRESET]))\
-                    or (isinstance(e, pyechonest.util.EchoNestAPIError)
-                        and any([("Error %s" % x) in str(e) for x in [-1, 5, 6]])):
-                        logging.getLogger(__name__).warning("Upload to EN failed - transcoding and reattempting.")
-                        self.__init__(ffmpeg_downconvert(initializer, filetype), 'mp3', lastTry=True)
-                        return
-                    elif (isinstance(e, pyechonest.util.EchoNestAPIError)
-                            and any([("Error %s" % x) in str(e) for x in [3]])):
-                        logging.getLogger(__name__).warning("EN API limit hit. Waiting 10 seconds.")
-                        time.sleep(10)
-                        self.__init__(initializer, filetype, lastTry=False)
-                        return
-                    else:
-                        logging.getLogger(__name__).warning("Got unhandlable EN exception. Raising:\n%s",
-                                                            traceback.format_exc())
-                        raise
-        except Exception as e:
-            if lastTry or type(initializer) is str:
-                raise
-
-            if "the track is still being analyzed" in str(e)\
-            or "there was an error analyzing the track" in str(e):
-                logging.getLogger(__name__).warning("Could not analyze track - truncating last byte and trying again.")
-                try:
-                    initializer.seek(-1, os.SEEK_END)
-                    initializer.truncate()
-                    initializer.seek(0)
-                except IOError:
-                    initializer.seek(-1, os.SEEK_END)
-                    new_len = initializer.tell()
-                    initializer.seek(0)
-                    initializer = cStringIO.StringIO(initializer.read(new_len))
-                self.__init__(initializer, filetype, lastTry=True)
-                return
-            else:
-                logging.getLogger(__name__).warning("Got a further unhandlable EN exception. Raising:\n%s",
-                                                    traceback.format_exc())
-                raise
-
-        if self.pyechonest_track is None:
-            #   This is an EN-side error that will *not* be solved by repeated calls
-            if type(initializer) is str:
-                raise EchoNestRemixError('Could not find track %s' % initializer)
-            else:
-                raise EchoNestRemixError('Could not find analysis for track!')
-
-        self.source = None
-
-        self._bars = None
-        self._beats = None
-        self._tatums = None
-        self._sections = None
-        self._segments = None
-
-        self.identifier = self.pyechonest_track.id
-        self.metadata   = self.pyechonest_track.meta
-
-        for attribute in ('time_signature', 'mode', 'tempo', 'key'):
-            d = {'value': getattr(self.pyechonest_track, attribute),
-                 'confidence': getattr(self.pyechonest_track, attribute + '_confidence')}
-            setattr(self, attribute, d)
-
-        for attribute in ('end_of_fade_in', 'start_of_fade_out', 'duration', 'loudness'):
-            setattr(self, attribute, getattr(self.pyechonest_track, attribute))
 
 
 class AudioData(AudioData):
@@ -369,10 +259,7 @@ class LocalAudioFile(LocalAudioFile):
     """
     __metaclass__ = monkeypatch_class
 
-    def __init__(self, data=None, type=None, uid=None, verbose=False):
-        assert(data is not None)
-        assert(type is not None)
-
+    def __init__(self, data, kind="mp3", uid=None, verbose=False):
         if not uid:
             uid = str(uuid.uuid4()).replace('-', '')
 
@@ -389,27 +276,19 @@ class LocalAudioFile(LocalAudioFile):
         if verbose:
             print >> sys.stderr, "Computed MD5 of file is " + track_md5
 
-        filepath = "cache/%s.pickle" % track_md5
         logging.getLogger(__name__).info("Fetching analysis...")
         try:
             if verbose:
-                print >> sys.stderr, "Probing for existing local analysis"
-            if os.path.isfile(filepath):
-                tempanalysis = cPickle.load(open(filepath, 'r'))
-            else:
-                if verbose:
-                    print >> sys.stderr, "Probing for existing analysis"
-                loading.join(FFMPEG_ERROR_TIMEOUT)
-                tempanalysis = AudioAnalysis(str(track_md5))
+                print >> sys.stderr, "Probing for existing analysis"
+            loading.join(FFMPEG_ERROR_TIMEOUT)
+            tempanalysis = AudioAnalysis(str(track_md5))
         except Exception:
             if verbose:
                 print >> sys.stderr, "Analysis not found. Uploading..."
             #   Let's fail faster - check and see if FFMPEG has errored yet, before asking EN
             loading.join(FFMPEG_ERROR_TIMEOUT)
-            tempanalysis = AudioAnalysis(data, type)
+            tempanalysis = AudioAnalysis(data, kind)
 
-        if not os.path.isfile(filepath):
-            cPickle.dump(tempanalysis, open(filepath, 'w'), 2)
         logging.getLogger(__name__).info("Fetched analysis in %ss",
                                          (time.time() - start))
         loading.join()
@@ -417,109 +296,6 @@ class LocalAudioFile(LocalAudioFile):
             raise AssertionError("LocalAudioFile has uninitialized audio data!")
         self.analysis = tempanalysis
         self.analysis.source = weakref.ref(self)
-
-
-class AudioStream(object):
-    """
-    Very much like an AudioData, but vastly more memory efficient.
-    However, AudioStream only supports sequential access - i.e.: one, un-seekable
-    stream of PCM data directly being streamed from FFMPEG.
-    """
-
-    def __init__(self, fobj):
-        self.sampleRate = 44100
-        self.numChannels = 2
-        self.stream = ffmpeg_stream(fobj, self.numChannels, self.sampleRate)
-        self.index = 0
-
-    def __getitem__(self, index):
-        """
-        Fetches a frame or slice. Returns an individual frame (if the index
-        is a time offset float or an integer sample number) or a slice if
-        the index is an `AudioQuantum` (or quacks like one).
-        """
-        if isinstance(index, float):
-            index = int(index * self.sampleRate)
-        elif hasattr(index, "start") and hasattr(index, "duration"):
-            index =  slice(float(index.start), index.start + index.duration)
-
-        if isinstance(index, slice):
-            if (hasattr(index.start, "start") and
-                hasattr(index.stop, "duration") and
-                hasattr(index.stop, "start")) :
-                index = slice(index.start.start, index.stop.start + index.stop.duration)
-
-        if isinstance(index, slice):
-            return self.getslice(index)
-        else:
-            return self.getsample(index)
-
-    def getslice(self, index):
-        "Help `__getitem__` return a new AudioData for a given slice"
-        if isinstance(index.start, float):
-            index = slice(int(index.start * self.sampleRate),
-                            int(index.stop * self.sampleRate), index.step)
-        if index.start < self.index:
-            raise ValueError("Cannot seek backwards in AudioStream")
-        if index.start > self.index:
-            self.stream.feed(index.start - self.index)
-        self.index = index.stop
-
-        return AudioData(None, self.stream.read(index.stop - index.start),
-                            sampleRate=self.sampleRate,
-                            numChannels=self.numChannels, defer=False)
-
-    def getsample(self, index):
-        if isinstance(index, float):
-            index = int(index * self.sampleRate)
-        if index >= self.index:
-            self.stream.feed(index.start - self.index)
-            self.index += index
-        else:
-            raise ValueError("Cannot seek backwards in AudioStream")
-
-    def render(self):
-        return self.stream.read()
-
-    def finish(self):
-        self.stream.finish()
-
-
-class LocalAudioStream(AudioStream):
-    def __init__(self, fobj):
-        AudioStream.__init__(self, fobj)
-
-        start = time.time()
-        fobj.seek(0)
-        track_md5 = hashlib.md5(fobj.read()).hexdigest()
-        fobj.seek(0)
-
-        filepath = "cache/%s.pickle" % track_md5
-        logging.getLogger(__name__).info("Fetching analysis...")
-        try:
-            if os.path.isfile(filepath):
-                tempanalysis = cPickle.load(open(filepath, 'r'))
-            else:
-                tempanalysis = AudioAnalysis(str(track_md5))
-        except Exception:
-            tempanalysis = AudioAnalysis(fobj, type)
-
-        if not os.path.isfile(filepath):
-            cPickle.dump(tempanalysis, open(filepath, 'w'), 2)
-        logging.getLogger(__name__).info("Fetched analysis in %ss",
-                                         (time.time() - start))
-        self.analysis = tempanalysis
-        self.analysis.source = weakref.ref(self)
-
-    class data(object):
-        """
-        Massive hack - certain operations are intrusive and check
-        `.data.ndim`, so in this case, we fake it.
-        """
-        ndim = 2
-
-    def __del__(self):
-        self.stream.finish()
 
 
 class AudioQuantumList(AudioQuantumList):

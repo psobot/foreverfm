@@ -14,8 +14,8 @@ import threading
 import multiprocessing
 from action import make_stereo, Blend
 
-from echonest.audio import assemble
-from audio import LocalAudioStream, AudioData
+from echonest.audio import assemble, LocalAudioStream
+from audio import AudioData
 
 from capsule_support import order_tracks, resample_features, \
                             timbre_whiten, initialize, make_transition, terminate, \
