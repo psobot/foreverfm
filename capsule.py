@@ -13,7 +13,7 @@ Heavily modified by Peter Sobot for integration with forever.fm.
 import threading
 import multiprocessing
 from action import make_stereo, Blend
-from audio import LocalAudioFile, assemble
+from audio import LocalAudioStream, assemble, AudioData
 
 from capsule_support import order_tracks, resample_features, \
                             timbre_whiten, initialize, make_transition, terminate, \
@@ -23,7 +23,6 @@ import time
 import logging
 import cStringIO
 from lame import Lame
-
 import soundcloud
 client = soundcloud.Client(client_id="6325e96fcef18547e6552c23b4c0788c")
 
@@ -63,7 +62,7 @@ class Mixer(multiprocessing.Process):
 
         if isinstance(initial, list):
             self.add_tracks(initial)
-        elif isinstance(initial, LocalAudioFile):
+        elif isinstance(initial, AudioData):
             self.add_track(initial)
 
         multiprocessing.Process.__init__(self)
@@ -99,13 +98,13 @@ class Mixer(multiprocessing.Process):
     def analyze(self, x):
         if isinstance(x, list):
             return [self.analyze(y) for y in x]
-        if isinstance(x, LocalAudioFile):
+        if isinstance(x, AudioData):
             return self.process(x)
         if isinstance(x, tuple):
             return self.analyze(*x)
 
         log.info("Grabbing stream of %s", x['title'])
-        laf = LocalAudioFile(self.get_stream(x), type='mp3')
+        laf = LocalAudioStream(self.get_stream(x))
         setattr(laf, "_metadata", x)
         return self.process(laf)  # TODO: Fix MP3 const
 
@@ -152,13 +151,13 @@ class Mixer(multiprocessing.Process):
                                  - self.transition_time * 3,
                                 self.tracks[1].analysis.duration
                                  - self.transition_time * 3)
-                trans = make_transition(self.tracks[0],
+                yield make_transition(self.tracks[0],
                                       self.tracks[1],
                                       stay_time,
                                       self.transition_time)
+                self.tracks[0].finish()
                 del self.tracks[0]
-                gc.collect()
-                yield trans
+                #gc.collect()
             log.info("Waiting for a new track.")
             try:
                 self.add_track(self.iqueue.get())  # TODO: Allow multiple tracks.
@@ -186,8 +185,10 @@ class Mixer(multiprocessing.Process):
                 log.info("Assembling audio data...")
                 out = assemble(ADs, numChannels=2, sampleRate=self.samplerate)
                 log.info("Assembled in %fs!", time.time() - _a)
+
                 del ADs
                 gc.collect()
+
                 if not ctime:
                     ctime = time.time()
                 for a in actions:
@@ -215,6 +216,7 @@ class Mixer(multiprocessing.Process):
                     self.infoqueue.put(d)
                     ctime += a.duration
                 self.encode(out.data)
+                gc.collect()
         except:
             traceback.print_exc()
             self.stop()
@@ -226,8 +228,6 @@ class Mixer(multiprocessing.Process):
         for encoder in self.encoders:
             encoder.add_pcm(pcm_data)
         done_time = time.time()
-        del pcm_data
-        gc.collect()
         if not self.__first:
             delay = max(0, (samples / float(self.samplerate)) \
                             - (done_time - put_time) \

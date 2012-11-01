@@ -20,7 +20,7 @@ class Frame
     @parseMetaData()
 
   parseMetaData: ->
-    matches = @tracks[0].metadata.title.match(/(.*?) - (.*)/i)
+    matches = @tracks[0].metadata.title.match(/(.*?)\s*-\s*(.*)/i)
     if matches?
       [_, @artist, @title] = matches
     else
@@ -31,12 +31,12 @@ class Frame
         @title = @tracks[0].metadata.title
         @artist = @tracks[0].metadata.user.username
     
-    matches = @title.match(/(.*?) - (.*)/i)
+    matches = @title.match(/([^\[\]]*?)( - ([^\[\]\(\)]*)|(\[.*\]))/i)
     if matches?
-      [_, @title, other] = matches
+      [_, @title, _, other] = matches
     
     #   Remove "Free Download" and such
-    @title = @title.replace /\s*(\[|\()[^\)\]]*(free|download|comment|out now|clip|bonus)+[^\)\]]*(\]|\))\s*/i, ""
+    @title = @title.replace /\s*((\[|\()[^\)\]]*(free|download|comment|out now|clip|bonus|preview|teaser|in store)+[^\)\]]*(\]|\))|(OUT NOW (ON \w*)?|free|download|preview|teaser|in store))\s*/i, ""
 
     @img = if @tracks[0].metadata.artwork_url?
              @tracks[0].metadata.artwork_url

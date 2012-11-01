@@ -31,12 +31,14 @@ class Metadata(object):
     @property
     def color(self):
         if not self.__color:
-            if 'artwork_url' in self.obj:
-                art = self.obj['artwork_url']
-            else:
-                art = self.obj['user']['avatar_url']
-            fobj = cStringIO.StringIO(self.client.get(art).raw_data)
             try:
+                if 'artwork_url' in self.obj:
+                    art = self.obj['artwork_url']
+                else:
+                    art = self.obj['user']['avatar_url']
+                if not art:
+                    raise ValueError()
+                fobj = cStringIO.StringIO(self.client.get(art).raw_data)
                 self.__color = colors.colorz(fobj, 1)[0]
             except:
                 log.error("Could not get artwork colour - defaulting to black.")

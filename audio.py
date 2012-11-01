@@ -16,7 +16,8 @@ import logging
 import subprocess
 import uuid
 import gc
-
+import weakref
+from threading import Semaphore
 from exceptionthread import ExceptionThread
 from monkeypatch import monkeypatch_class
 
@@ -122,6 +123,92 @@ def ffmpeg(infile,
     return arr
 
 
+class FFMPEGStreamHandler(ExceptionThread):
+    def __init__(self, infile, p):
+        self.p = p
+        self.infile = infile
+        self.infile.seek(0)
+        self.insize = 2 ** 24
+        self.__s = Semaphore(0)
+        ExceptionThread.__init__(self)
+        self.daemon = True
+        self.running = True
+        self.start()
+
+    def __del__(self):
+        self.finish()
+
+    def run(self):
+        while self.running:
+            self.__s.release()
+            try:
+                self.p.stdin.write(self.infile.read(self.insize))
+            except IOError:
+                break
+            self.__s.acquire()
+
+    def finish(self):
+        self.running = False
+        try:
+            self.p.kill()
+            self.p.wait()
+        except OSError:
+            pass
+
+    #   TODO: Abstract me away from 44100Hz, 2ch 16 bit
+    def read(self, samples):
+        if not self.running:
+            raise ValueError("FFMPEG has already finished!")
+        self.__s.release()
+        arr = numpy.fromfile(self.p.stdout,
+                               dtype=numpy.int16,
+                               count=samples * 2)
+        print "Allocated new Numpy array of size: %d bytes." % arr.nbytes
+        if len(arr) < samples * 2:
+            self.running = False
+        arr = numpy.reshape(arr, (-1, 2))
+        self.__s.acquire()
+        return arr
+
+    def feed(self, samples):
+        self.__s.release()
+        self.p.stdout.read(samples * 4)
+        self.__s.acquire()
+
+
+def ffmpeg_stream(infile, numChannels=None, sampleRate=None):
+    """
+    Executes ffmpeg through the shell to convert or read media files.
+    This custom version does the conversion in-memory - no temp files involved. Quicker, too.
+    """
+    filename = None
+    if type(infile) is str or type(infile) is unicode:
+        filename = str(infile)
+
+    command = "en-ffmpeg"
+    if filename:
+        command += " -i \"%s\"" % infile
+    else:
+        command += " -i pipe:0"
+    if numChannels is not None:
+        command += " -ac " + str(numChannels)
+    if sampleRate is not None:
+        command += " -ar " + str(sampleRate)
+    command += " -f s16le -acodec pcm_s16le pipe:1"
+    logging.getLogger(__name__).info("Calling ffmpeg: %s", command)
+
+    (lin, mac, win) = get_os()
+    p = subprocess.Popen(
+        command,
+        shell=True,
+        stdin=(None if filename else subprocess.PIPE),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        close_fds=(not win)
+    )
+    return FFMPEGStreamHandler(infile, p)
+
+
 def ffmpeg_downconvert(infile, format=None, uid=None, lastTry=False):
     """
     Executes ffmpeg through the shell to convert or read media files.
@@ -218,6 +305,19 @@ def getpieces(audioData, segs):
         newAD.append(audioData[s])
         # audioData.unload()
     return newAD
+
+
+def assemble(audioDataList, numChannels=1, sampleRate=44100, verbose=True):
+    """
+    Collects audio samples for output.
+    Returns a new `AudioData` object assembled
+    by concatenating all the elements of audioDataList.
+
+    :param audioDatas: a list of `AudioData` objects
+    """
+    return AudioData(ndarray=numpy.concatenate([a.data for a in audioDataList]),
+                        numChannels=numChannels,
+                        sampleRate=sampleRate, defer=False, verbose=verbose)
 
 
 #######
@@ -607,7 +707,89 @@ class LocalAudioFile(LocalAudioFile):
         if self.data is None:
             raise AssertionError("LocalAudioFile has uninitialized audio data!")
         self.analysis = tempanalysis
-        self.analysis.source = self
+        self.analysis.source = weakref.ref(self)
+
+
+class AudioStream(object):
+    def __init__(self, fobj):
+        self.sampleRate = 44100
+        self.numChannels = 2
+        self.stream = ffmpeg_stream(fobj, self.numChannels, self.sampleRate)
+        self.index = 0
+
+    def __getitem__(self, index):
+        """
+        Fetches a frame or slice. Returns an individual frame (if the index
+        is a time offset float or an integer sample number) or a slice if
+        the index is an `AudioQuantum` (or quacks like one).
+        """
+        if isinstance(index, float):
+            index = int(index * self.sampleRate)
+        elif hasattr(index, "start") and hasattr(index, "duration"):
+            index =  slice(float(index.start), index.start + index.duration)
+
+        if isinstance(index, slice):
+            if (hasattr(index.start, "start") and
+                hasattr(index.stop, "duration") and
+                hasattr(index.stop, "start")) :
+                index = slice(index.start.start, index.stop.start + index.stop.duration)
+
+        if isinstance(index, slice):
+            return self.getslice(index)
+        else:
+            return self.getsample(index)
+
+    def getslice(self, index):
+        "Help `__getitem__` return a new AudioData for a given slice"
+        if isinstance(index.start, float):
+            index = slice(int(index.start * self.sampleRate),
+                            int(index.stop * self.sampleRate), index.step)
+        if index.start < self.index:
+            raise ValueError("Cannot seek backwards in AudioStream!")
+        if index.start > self.index:
+            self.stream.feed(index.start - self.index)
+        self.index = index.stop
+
+        return AudioData(None, self.stream.read(index.stop - index.start),
+                            sampleRate=self.sampleRate,
+                            numChannels=self.numChannels, defer=False)
+
+    def finish(self):
+        self.stream.finish()
+
+
+class LocalAudioStream(AudioStream):
+    def __init__(self, fobj):
+        AudioStream.__init__(self, fobj)
+
+        start = time.time()
+        fobj.seek(0)
+        track_md5 = hashlib.md5(fobj.read()).hexdigest()
+        fobj.seek(0)
+
+        filepath = "cache/%s.pickle" % track_md5
+        logging.getLogger(__name__).info("Fetching analysis...")
+        try:
+            if os.path.isfile(filepath):
+                tempanalysis = cPickle.load(open(filepath, 'r'))
+            else:
+                tempanalysis = AudioAnalysis(str(track_md5))
+        except Exception:
+            tempanalysis = AudioAnalysis(fobj, type)
+
+        if not os.path.isfile(filepath):
+            cPickle.dump(tempanalysis, open(filepath, 'w'), 2)
+        logging.getLogger(__name__).info("Fetched analysis in %ss",
+                                         (time.time() - start))
+        self.analysis = tempanalysis
+        self.analysis.source = weakref.ref(self)
+
+        class hack(object):
+            ndim = 2
+        self.data = hack()
+
+    def __del__(self):
+        self.stream.finish()
 
 
 class AudioQuantumList(AudioQuantumList):
