@@ -36,7 +36,7 @@ class Frame
       [_, @title, _, other] = matches
     
     #   Remove "Free Download," "Follow Me" and the like
-    @title = @title.replace /(\s*-*\s*((\[|\()[^\)\]]*(free|download|comment|out now|clip|bonus|preview|teaser|in store|follow)+[^\)\]]*(\]|\))|((OUT NOW( ON \w*)?|free|download|preview|teaser|in store|follow).*$))\s*|\[(.*?)\])/i, ""
+    @title = @title.replace /(\s*-*\s*((\[|\()[^\)\]]*(mp3|dl|description|free|download|comment|out now|clip|bonus|preview|teaser|in store|follow)+[^\)\]]*(\]|\))|((OUT NOW( ON \w*)?|free|download|preview|teaser|in store|follow|mp3|dl|description).*$))\s*|\[(.*?)\])/i, ""
 
     if @title[0] == '"' and @title[@title.length - 1] == '"'
       @title = @title[1...@title.length - 1].trim()
@@ -52,8 +52,10 @@ class Frame
     @url = @tracks[0].metadata.permalink_url
 
   html: ->
+    _new = @new
+    @new = ''
     """
-    <a class='track #{@new}' id='#{@id}' target="_blank" href="#{@url}">
+    <a class='track #{_new}' id='#{@id}' target="_blank" href="#{@url}">
       <div class="coverart"><img src="#{@img}" /></div>
       <div class="text">
         <span class="title">#{@title}</span>
@@ -81,7 +83,6 @@ class Frame
 
     console.log "Rendering", @tracks[0].metadata.title, "played?", @played()
     parent = @intendedParent()
-    #if $(parent).data('limit') <= parent.children.length
     $(parent).prepend @html()
     id = @id
     setTimeout((-> $("##{id}").removeClass 'new'), 100)

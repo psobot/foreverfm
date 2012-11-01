@@ -3,8 +3,10 @@ import lame
 import time
 import base64
 import Queue
+import config
 import logging
 import threading
+import pyechonest
 import soundcloud
 import scwaveform
 import tornado.web
@@ -19,7 +21,7 @@ from operator import attrgetter
 from assetcompiler import compiled
 from sockethandler import SocketHandler
 
-client = soundcloud.Client(client_id="b08793cf5964f5571db86e3ca9e5378f")
+client = soundcloud.Client(client_id=config.SOUNDCLOUD_CLIENT_KEY)
 Metadata.client = client
 
 
@@ -42,6 +44,8 @@ LAG_LIMIT = 2  # seconds. If we're lagging by this much, drop packets and try ag
 template_dir = "templates/"
 templates = tornado.template.Loader(template_dir)
 templates.autoescape = None
+
+pyechonest.ECHO_NEST_API_KEY = config.ECHO_NEST_API_KEY
 
 
 class Listeners(list):

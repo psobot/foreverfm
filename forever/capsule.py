@@ -26,7 +26,9 @@ import logging
 import cStringIO
 from lame import Lame
 import soundcloud
-client = soundcloud.Client(client_id="6325e96fcef18547e6552c23b4c0788c")
+import config
+
+client = soundcloud.Client(client_id=config.SOUNDCLOUD_CLIENT_KEY)
 
 logging.basicConfig(format="%(asctime)s P%(process)-5d (%(levelname)8s) %(module)16s%(lineno)5d: %(uid)32s %(message)s")
 log = logging.getLogger(__name__)
