@@ -140,8 +140,6 @@ class Lame(threading.Thread):
                     self.finished = True
                     break
             self.encode.release()
-            del chunk
-            del data
 
     #   TODO: Extend me to work for all samplerates
     def start(self, *args, **kwargs):
