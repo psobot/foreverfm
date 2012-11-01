@@ -6,7 +6,6 @@ import Queue
 import config
 import logging
 import threading
-import pyechonest
 import soundcloud
 import scwaveform
 import tornado.web
@@ -14,6 +13,7 @@ import tornado.ioloop
 import tornado.template
 import tornadio2.server
 import multiprocessing
+import pyechonest.config
 from capsule import Mixer
 from random import shuffle
 from metadata import Metadata
@@ -45,7 +45,7 @@ template_dir = "templates/"
 templates = tornado.template.Loader(template_dir)
 templates.autoescape = None
 
-pyechonest.ECHO_NEST_API_KEY = config.ECHO_NEST_API_KEY
+pyechonest.config.ECHO_NEST_API_KEY = config.ECHO_NEST_API_KEY
 
 
 class Listeners(list):
