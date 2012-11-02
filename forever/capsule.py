@@ -94,8 +94,19 @@ class Mixer(multiprocessing.Process):
         try:
             return cStringIO.StringIO(open(fname, 'r').read())
         except IOError:
-            url = x['download_url'] if x['downloadable'] and x['original_format'] == "mp3" else x['stream_url']
-            a = cStringIO.StringIO(urllib2.urlopen(url + "?client_id=" + config.SOUNDCLOUD_CLIENT_KEY).read())
+            if x['downloadable'] and x['original_format'] == "mp3":
+                url = x['download_url']
+            else:
+                url = x['stream_url']
+            url += "?client_id=" + config.SOUNDCLOUD_CLIENT_KEY
+
+            try:
+                conn = urllib2.urlopen(url)
+            except urllib2.URLError as e:
+                log.warning("Encountered URL error while trying to fetch: %s. Retrying...", e)
+                conn = urllib2.urlopen(url)
+
+            a = cStringIO.StringIO(conn.read())
             open(fname, 'w').write(a.read())
             a.seek(0)
             return a
@@ -143,8 +154,12 @@ class Mixer(multiprocessing.Process):
     def loop(self):
         while len(self.tracks) < 2:
             log.info("Waiting for a new track.")
-            self.add_track(self.iqueue.get())  # TODO: Extend to allow multiple tracks.
-            log.info("Got a new track.")
+            track = self.iqueue.get()
+            try:
+                self.add_track(track)  # TODO: Extend to allow multiple tracks.
+                log.info("Got a new track.")
+            except Exception, e:
+                log.error("Could not add track due to %s! Skipping...", e)
 
         # Initial transition. Should contain 2 instructions: fadein, and playback.
         inter = self.tracks[0].analysis.duration - self.transition_time * 3
