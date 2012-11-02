@@ -1369,7 +1369,7 @@ soundManager.setup({
   debugMode: true, // disable or enable debug output
   consoleOnly: true,
   flashVersion: 9,
-  useHighPerformance: false,
+  useHighPerformance: true,
   useFlashBlock: true
 });
 
