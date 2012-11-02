@@ -9,8 +9,11 @@ from numpy import zeros, multiply, float32, mean, copy
 
 from echonest.audio import assemble, AudioData
 from cAction import limit, crossfade, fadein, fadeout
+import logging
 
 import dirac
+
+log = logging.getLogger(__name__)
 
 
 def rows(m):
@@ -242,7 +245,12 @@ class Crossmatch(Blend):
                     self.durations[i] / l[i][1])
             rates.append(rate)
 
-        vecout = dirac.timeScale(vecin, rates, t.sampleRate, 0)
+        try:
+            vecout = dirac.timeScale(vecin, rates, t.sampleRate, 0)
+        except dirac.error as e:
+            log.error("Couldn't stretch: %s.\n\tlen(vecin) = %d\n\trates = %s",
+                      e, len(vecin), rates)
+            vecout = vecin[int(self.duration * self.sampleRate)]
         if hasattr(t, 'gain'):
             vecout = limit(multiply(vecout, float32(t.gain)))
 
