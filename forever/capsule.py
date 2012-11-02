@@ -12,7 +12,7 @@ Heavily modified by Peter Sobot for integration with forever.fm.
 
 import threading
 import multiprocessing
-from action import make_stereo, Blend
+from action import make_stereo, Blend, Crossfade
 
 from echonest.audio import assemble, LocalAudioStream
 from audio import AudioData
@@ -201,7 +201,7 @@ class Mixer(multiprocessing.Process):
                         'action': a.__class__.__name__.split(".")[-1],
                         'duration': a.duration
                     }
-                    if isinstance(a, Blend):
+                    if isinstance(a, Blend) or isinstance(a, Crossfade):
                         d['tracks'] = [{
                             "metadata": a.t1._metadata,
                             "start": a.l1[0][0],
