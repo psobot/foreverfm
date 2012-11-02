@@ -250,7 +250,7 @@ class Crossmatch(Blend):
         except Exception as e:
             log.error("Couldn't stretch: %s.\n\tlen(vecin) = %d\n\trates = %s",
                       e, len(vecin), rates)
-            vecout = vecin[int(self.duration * self.sampleRate)]
+            vecout = vecin[:int(self.duration * t.sampleRate)]
         if hasattr(t, 'gain'):
             vecout = limit(multiply(vecout, float32(t.gain)))
 
