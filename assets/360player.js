@@ -61,7 +61,7 @@ function ThreeSixtyPlayer() {
     autoPlay: false,   // start playing the first sound right away
     allowMultiple: false,  // let many sounds play at once (false = only one sound playing at a time)
     loadRingColor: '#ccc', // how much has loaded
-    playRingColor: '#000', // how much has played
+    playRingColor: '#ccc', // how much has played
     backgroundRingColor: '#d5d5d5', // color shown underneath load + play ("not yet loaded" color)
 
     // optional segment/annotation (metadata) stuff..
@@ -70,8 +70,8 @@ function ThreeSixtyPlayer() {
     loadRingColorMetadata: '#ddd', // "annotations" load color
     playRingColorMetadata: 'rgba(128,192,256,0.9)', // how much has played when metadata is present
 
-    circleDiameter: null, // set dynamically according to values from CSS
-    circleRadius: null,
+    circleDiameter: 256, // set dynamically according to values from CSS
+    circleRadius: 128,
     animDuration: 500,
     animTransition: window.Animator.tx.bouncy, // http://www.berniecode.com/writing/animator.html
     showHMSTime: false, // hours:minutes:seconds vs. seconds-only
@@ -83,14 +83,14 @@ function ThreeSixtyPlayer() {
     waveformDataDownsample: 3, // use only one in X (of a set of 256 values) - 1 means all 256
     waveformDataOutside: false,
     waveformDataConstrain: false, // if true, +ve values only - keep within inside circle
-    waveformDataLineRatio: 0.64,
+    waveformDataLineRatio: 1.44,
 
     // "spectrum frequency" option
     useEQData: true,
     eqDataColor: '#339933',
-    eqDataDownsample: 4, // use only one in X (of 256 values)
+    eqDataDownsample: 3, // use only one in X (of 256 values)
     eqDataOutside: true,
-    eqDataLineRatio: 0.54,
+    eqDataLineRatio: 1.109,
 
     // enable "amplifier" (canvas pulses like a speaker) effect
     usePeakData: true,
