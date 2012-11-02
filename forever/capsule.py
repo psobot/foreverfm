@@ -89,12 +89,12 @@ class Mixer(multiprocessing.Process):
         return self.tracks[0]
 
     def get_stream(self, x):
-        #   TODO: Extend me to deal with possible downloadable tracks
         fname = "cache/%d.mp3" % x['id']
         try:
             return cStringIO.StringIO(open(fname, 'r').read())
         except IOError:
-            a = cStringIO.StringIO(client.get(x['stream_url']).raw_data)
+            url = x['download_url'] if x['downloadable'] and x['original_format'] == "mp3" else x['stream_url']
+            a = cStringIO.StringIO(client.get(url).raw_data)
             open(fname, 'w').write(a.read())
             a.seek(0)
             return a
