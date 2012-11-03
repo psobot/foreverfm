@@ -2,7 +2,10 @@ from Queue import Queue
 import subprocess
 import threading
 import traceback
+import logging
 import time
+
+log = logging.getLogger(__name__)
 
 """
     Quick and dirty, frame-aware MP3 encoding bridge using LAME.
@@ -210,7 +213,7 @@ class Lame(threading.Thread):
                     break
             self.lame.wait()
         except:
-            traceback.print_exc()
+            log.error(traceback.format_exc())
             self.finish()
             raise
 
@@ -220,7 +223,6 @@ class Lame(threading.Thread):
             finish encoding. Returns LAME's return value code.
         """
         if self.lame:
-            #   TODO: else raise an error maybe?
             self.__write_queue.put(None)
             self.encode.acquire()
             self.lame.stdin.close()

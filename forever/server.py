@@ -1,3 +1,9 @@
+"""
+Forever.fm Server
+by @psobot, Nov 3 2012
+"""
+
+import sys
 import json
 import lame
 import time
@@ -5,6 +11,7 @@ import base64
 import Queue
 import config
 import logging
+import customlog
 import threading
 import soundcloud
 import scwaveform
@@ -14,6 +21,7 @@ import tornado.template
 import tornadio2.server
 import multiprocessing
 import pyechonest.config
+from daemon import Daemon
 from capsule import Mixer
 from random import shuffle
 from metadata import Metadata
@@ -21,6 +29,9 @@ from operator import attrgetter
 from assetcompiler import compiled
 from sockethandler import SocketHandler
 
+
+#   API Key setup
+pyechonest.config.ECHO_NEST_API_KEY = config.ECHO_NEST_API_KEY
 client = soundcloud.Client(client_id=config.SOUNDCLOUD_CLIENT_KEY)
 Metadata.client = client
 
@@ -29,23 +40,25 @@ def good_track(track):
     return track.streamable and track.duration < 360000 and track.duration > 90000
 
 
-logging.basicConfig(format="%(asctime)s P%(process)-5d (%(levelname)8s) %(module)16s%(lineno)5d: %(uid)32s %(message)s")
-log = logging.getLogger(__name__)
+log = logging.getLogger(config.log_name)
+log.setLevel(logging.DEBUG)
+#   To avoid any nasty non-multi-thread-safe RootLogger issues...
+for handler in logging.root.handlers:
+    logging.root.removeHandler(handler)
+logging.root.addHandler(customlog.MultiprocessingStreamHandler())
 
-import sys
+
 test = 'test' in sys.argv
 frontend = 'frontend' in sys.argv
 stream = not frontend
 
 
-frame_seconds = lame.SAMPLES_PER_FRAME / 44100.0
-LAG_LIMIT = 2  # seconds. If we're lagging by this much, drop packets and try again.
+SECONDS_PER_FRAME = lame.SAMPLES_PER_FRAME / 44100.0
+LAG_LIMIT = config.lag_limit
 
 template_dir = "templates/"
 templates = tornado.template.Loader(template_dir)
 templates.autoescape = None
-
-pyechonest.config.ECHO_NEST_API_KEY = config.ECHO_NEST_API_KEY
 
 
 class Listeners(list):
@@ -72,7 +85,7 @@ class Listeners(list):
 
             self.__broadcast()
             if self.__last_send:
-                self.__lag += (time.time() - self.__last_send) - frame_seconds
+                self.__lag += (time.time() - self.__last_send) - SECONDS_PER_FRAME
             else:
                 log.info("Sending first frame for %s.", self.__name)
             self.__last_send = time.time()
@@ -82,7 +95,7 @@ class Listeners(list):
                             self.__name, self.__lag * 1000)
                 while self.__lag > 0 and not self.__queue.empty():
                     self.__broadcast()
-                    self.__lag -= frame_seconds
+                    self.__lag -= SECONDS_PER_FRAME
 
             self.__last_send = time.time()
         except Queue.Empty:
@@ -197,7 +210,9 @@ class BufferedReadQueue(Queue.Queue):
         return self.qsize()
 
 
-def start():
+def main():
+    Daemon()
+
     track_queue = multiprocessing.Queue(1)
     v2_queue = BufferedReadQueue()
     info_queue = multiprocessing.Queue()
@@ -236,7 +251,7 @@ def start():
     )
 
     frame_sender = tornado.ioloop.PeriodicCallback(
-        StreamHandler.stream_frames, frame_seconds * 1000
+        StreamHandler.stream_frames, SECONDS_PER_FRAME * 1000
     )
     frame_sender.start()
 
@@ -267,11 +282,11 @@ def add_tracks(track_queue):
             tracks = filter(good_track, tracks)
             for track in tracks:
                 if track.bpm:
-                    print "track", track.title, "has bpm", track.bpm
+                    log.debug("track %s has bpm %s", track.title, track.bpm)
 
             for track in sorted(tracks, key=attrgetter('bpm')):
                 if track.bpm:
-                    print "track", track.title, "has bpm", track.bpm
+                    log.debug("track %s has bpm %s", track.title, track.bpm)
 
             shuffle(tracks)
 
@@ -328,4 +343,4 @@ def parse_info(info_queue):
         InfoHandler.add(action)
 
 if __name__ == "__main__":
-    start()
+    main()

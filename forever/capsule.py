@@ -238,7 +238,8 @@ class Mixer(multiprocessing.Process):
                 self.encode(out.data)
                 gc.collect()
         except:
-            traceback.print_exc()
+            log.error("Something failed in capsule.run:\n%s",
+                      traceback.format_exc())
             self.stop()
             return
 

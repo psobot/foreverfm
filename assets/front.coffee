@@ -1,3 +1,9 @@
+window.log = ->
+  log.history = log.history or []
+  log.history.push arguments
+  console.log Array::slice.call(arguments)  if @console
+
+
 soundManager.setup
   url: '/static/flash/'
 
@@ -81,7 +87,7 @@ class Frame
     return if @action != "Playback"
     return @relayout() if @div?
 
-    console.log "Rendering", @tracks[0].metadata.title, "played?", @played()
+    window.log "Rendering", @tracks[0].metadata.title, "played?", @played()
     parent = @intendedParent()
     $(parent).prepend @html()
     id = @id
@@ -89,14 +95,11 @@ class Frame
     @div = document.getElementById @id
 
   relayout: ->
-    console.log "Doing relayout of ", @tracks[0].metadata.title, "played?", @played()
+    window.log "Doing relayout of ", @tracks[0].metadata.title, "played?", @played()
     @div = document.getElementById(@id) if not @div.parentNode?
     newparent = document.getElementById( if @played() then "done" else "tracks" )
     if @div.parentNode != newparent
-      # TODO: element.addEventListener('webkitAnimationEnd', function(){
-      # this.style.webkitAnimationName = '';
-      # }, false);
-      console.log "Adding #{@tracks[0].metadata.title} to #{newparent.id}"
+      window.log "Adding #{@tracks[0].metadata.title} to #{newparent.id}"
       @div.parentNode.removeChild @div
       newparent.innerHTML = @html() + newparent.innerHTML
 
@@ -158,7 +161,7 @@ class Waveform
     frame.render()
     
   onCurrentFrameChange: (old, knew) ->
-    console.log "Current frame is now:", knew.action, knew.tracks[0].metadata.title
+    window.log "Current frame is now:", knew.action, knew.tracks[0].metadata.title
     knew.render()
     old.render() if old?
     
