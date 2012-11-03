@@ -37,7 +37,7 @@ function ThreeSixtyPlayer() {
       isTouchDevice = (uA.match(/ipad|iphone/i)),
       hasRealCanvas = (typeof window.G_vmlCanvasManager === 'undefined' && typeof document.createElement('canvas').getContext('2d') !== 'undefined'),
       // I dunno what Opera doesn't like about this. I'm probably doing it wrong.
-      fullCircle = (isOpera||isChrome?359.9:360);
+      fullCircle = (isOpera?359.9:360);
 
   // CSS class for ignoring MP3 links
   this.excludeClass = 'threesixty-exclude';
