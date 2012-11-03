@@ -60,14 +60,14 @@ class Frame
       <div class="text">
         <span class="title">#{@title}</span>
         <span class="artist">#{@artist}</span>
+        #{if @stats then "
+        <div class='stats'>
+          <span class='count playback'>#{@playcount}</span>
+          <span class='count download'>#{@downloads}</span>
+          <span class='count favoritings'>#{@favoritings}</span>
+        </div>
+        " else ""}
       </div>
-      #{if @stats then "
-      <div class='stats'>
-        <span class='count playback'>#{@playcount}</span>
-        <span class='count download'>#{@downloads}</span>
-        <span class='count favoritings'>#{@favoritings}</span>
-      </div>
-      " else ""}
     </div>
     """
 

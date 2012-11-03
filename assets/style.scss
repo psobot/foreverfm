@@ -22,8 +22,8 @@ body {
       text-align: center;
       font-weight: 300;
 
-      margin: 30px auto 0;
-      padding-top: 246px;
+      margin: 23px auto 7px;
+      padding-top: 261px;
       font-size: 54px;
 
       text-transform: lowercase;
@@ -40,7 +40,7 @@ body {
 
     #player {
       width: 256px;
-      margin: 44px 22px 4px;
+      margin: 29px 22px 4px;
     }
   }
   
@@ -187,6 +187,7 @@ body {
           .title {
             display: block;
             font-size: 40px;
+            margin-bottom: -20px;
           }
           .artist {
             display: block;
@@ -195,6 +196,7 @@ body {
           }
         }
         .stats {
+          display: inline;
           height: 16px;
           margin-top: 4px;
         }
