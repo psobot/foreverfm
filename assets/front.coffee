@@ -159,7 +159,7 @@ class Waveform
         @setPlayerColor() if right < @offset and right + frame.image.width > (@offset / 2)
         right += frame.image.width
 
-  __dec2hex: (dec) ->
+  __dec2hex: (i) ->
    (i+0x100).toString(16).substr(-2)
 
   setPlayerColor: ->
