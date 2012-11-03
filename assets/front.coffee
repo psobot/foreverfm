@@ -168,6 +168,7 @@ class Waveform
   setPlayerColor: ->
     pix = @context.getImageData(@offset, parseInt(@canvas.height / 2), 1, 1).data
     window.threeSixtyPlayer.config.playRingColor = "##{@__dec2hex(pix[0])}#{@__dec2hex(pix[1])}#{@__dec2hex(pix[2])}"
+    window.threeSixtyPlayer.config.backgroundRingColor = window.threeSixtyPlayer.config.playRingColor
 
   onNewFrame: (frame) ->
     @frames.push frame
