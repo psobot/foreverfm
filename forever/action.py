@@ -248,8 +248,7 @@ class Crossmatch(Blend):
         try:
             vecout = dirac.timeScale(vecin, rates, t.sampleRate, 0)
         except Exception as e:
-            log.error("Couldn't stretch: %s.\n\tlen(vecin) = %d\n\trates = %s",
-                      e, len(vecin), rates)
+            log.error("Couldn't stretch: %s Retrying.", e)
             vecout = vecin[:int(self.duration * t.sampleRate)]
         if hasattr(t, 'gain'):
             vecout = limit(multiply(vecout, float32(t.gain)))

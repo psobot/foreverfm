@@ -199,7 +199,13 @@ class Mixer(multiprocessing.Process):
             for i, actions in enumerate(self.loop()):
                 _a = time.time()
                 log.info("Rendering audio data...")
-                ADs = [a.render() for a in actions]
+                ADs = []
+                for a in actions:
+                    try:
+                        ADs.append(a.render())
+                    except:
+                        log.error("Could not render %s. Skipping.\n%s", a,
+                                  traceback.format_exc())
                 log.info("Rendered in %fs!", time.time() - _a)
                 _a = time.time()
                 log.info("Assembling audio data...")
