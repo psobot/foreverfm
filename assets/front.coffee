@@ -162,10 +162,12 @@ class Waveform
   __dec2hex: (i) ->
    (i+0x100).toString(16).substr(-2)
 
-  LIGHTENING: 64
+  LIGHTENING: 48
   setPlayerColor: ->
     pix = @context.getImageData(@offset, parseInt(@canvas.height / 2), 1, @canvas.height).data
-    [r, g, b] = [Math.min(pix[0] + @LIGHTENING), Math.min(pix[1] + @LIGHTENING), Math.min(pix[2] + @LIGHTENING)]
+    [r, g, b] = [Math.min(pix[0] + @LIGHTENING, 255),
+                 Math.min(pix[1] + @LIGHTENING, 255),
+                 Math.min(pix[2] + @LIGHTENING, 255)]
     window.threeSixtyPlayer.config.playRingColor = "##{@__dec2hex(r)}#{@__dec2hex(g)}#{@__dec2hex(b)}"
     window.threeSixtyPlayer.config.backgroundRingColor = window.threeSixtyPlayer.config.playRingColor
 
