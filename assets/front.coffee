@@ -152,9 +152,20 @@ class Waveform
         return if not @frames[0]?
         left = (nowtime - @frames[0].time) * @speed * -1
       right = @offset + left
+
+      # Actually draw our waveform here
       for frame in @frames
         @context.drawImage frame.image, right, 0
+        if @right < @offset and @right + frame.image.width > (@offset / 2)
+          window.threeSixtyPlayer.config.playRingColor = @gethex()
         right += frame.image.width
+
+  __dec2hex: (dec) ->
+   (i+0x100).toString(16).substr(-2)
+
+  getHex: ->
+    pix = @context.getImageData(parseInt(@offset / 2), parseInt(@canvas.height / 2), 1, 1).data
+    "##{@__dec2hex(pix[0])}#{@__dec2hex(pix[1])}#{@__dec2hex(pix[2])}"
 
   onNewFrame: (frame) ->
     @frames.push frame
