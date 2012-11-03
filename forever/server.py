@@ -11,6 +11,8 @@ import base64
 import Queue
 import config
 import logging
+import restart
+import datetime
 import customlog
 import threading
 import soundcloud
@@ -34,6 +36,9 @@ from sockethandler import SocketHandler
 pyechonest.config.ECHO_NEST_API_KEY = config.ECHO_NEST_API_KEY
 client = soundcloud.Client(client_id=config.SOUNDCLOUD_CLIENT_KEY)
 Metadata.client = client
+
+started_at_timestamp = time.time()
+started_at = datetime.datetime.utcnow()
 
 
 def good_track(track):
@@ -231,6 +236,12 @@ def main():
     pi.daemon = True
     pi.start()
 
+    tornado.ioloop.PeriodicCallback(
+        lambda: restart.check('restart.txt', started_at_timestamp),
+        config.restart_timeout * 1000
+    ).start()
+    tornado.ioloop.PeriodicCallback(InfoHandler.clean, 5 * 1000).start()
+
     class SocketConnection(tornadio2.conn.SocketConnection):
         __endpoints__ = {"/info.websocket": SocketHandler}
 
@@ -246,7 +257,7 @@ def main():
             (r"/all.json", InfoHandler),
             (r"/", MainHandler)
         ] + stream_routes),
-        socket_io_port=8193,
+        socket_io_port=config.socket_port,
         enabled_protocols=['websocket', 'xhr-multipart', 'xhr-polling', 'jsonp-polling']
     )
 
@@ -255,12 +266,7 @@ def main():
     )
     frame_sender.start()
 
-    cleaner = tornado.ioloop.PeriodicCallback(
-        InfoHandler.clean, 5 * 1000
-    )
-    cleaner.start()
-
-    application.listen(8192)
+    application.listen(config.http_port)
     tornadio2.server.SocketServer(application)
 
 
