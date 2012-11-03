@@ -60,15 +60,15 @@ function ThreeSixtyPlayer() {
     playNext: false,   // stop after one sound, or play through list until end
     autoPlay: false,   // start playing the first sound right away
     allowMultiple: false,  // let many sounds play at once (false = only one sound playing at a time)
-    loadRingColor: '#ccc', // how much has loaded
-    playRingColor: '#ccc', // how much has played
+    loadRingColor: '#d5d5d5', // how much has loaded
+    playRingColor: '#d5d5d5', // how much has played
     backgroundRingColor: '#d5d5d5', // color shown underneath load + play ("not yet loaded" color)
 
     // optional segment/annotation (metadata) stuff..
-    segmentRingColor: 'rgba(255,255,255,0.33)', // metadata/annotation (segment) colors
-    segmentRingColorAlt: 'rgba(0,0,0,0.1)',
-    loadRingColorMetadata: '#ddd', // "annotations" load color
-    playRingColorMetadata: 'rgba(128,192,256,0.9)', // how much has played when metadata is present
+    segmentRingColor: '#d5d5d5', // metadata/annotation (segment) colors
+    segmentRingColorAlt: '#d5d5d5',
+    loadRingColorMetadata: '#d5d5d5', // "annotations" load color
+    playRingColorMetadata: '#d5d5d5', // how much has played when metadata is present
 
     circleDiameter: 256, // set dynamically according to values from CSS
     circleRadius: 128,
@@ -79,7 +79,7 @@ function ThreeSixtyPlayer() {
 
     // optional: spectrum or EQ graph in canvas (not supported in IE <9, too slow via ExCanvas)
     useWaveformData: false,
-    waveformDataColor: '#0099ff',
+    waveformDataColor: '#d5d5d5',
     waveformDataDownsample: 3, // use only one in X (of a set of 256 values) - 1 means all 256
     waveformDataOutside: false,
     waveformDataConstrain: false, // if true, +ve values only - keep within inside circle
@@ -87,14 +87,14 @@ function ThreeSixtyPlayer() {
 
     // "spectrum frequency" option
     useEQData: true,
-    eqDataColor: '#339933',
+    eqDataColor: '#d5d5d5',
     eqDataDownsample: 3, // use only one in X (of 256 values)
     eqDataOutside: true,
     eqDataLineRatio: 1.109,
 
     // enable "amplifier" (canvas pulses like a speaker) effect
     usePeakData: true,
-    peakDataColor: '#ff33ff',
+    peakDataColor: '#d5d5d5',
     peakDataOutside: true,
     peakDataLineRatio: 0.5,
 
@@ -102,7 +102,7 @@ function ThreeSixtyPlayer() {
 
     fontSizeMax: null, // set according to CSS
 
-    scaleArcWidth: 1,  // thickness factor of playback progress ring
+    scaleArcWidth: 1.6,  // thickness factor of playback progress ring
 
     useFavIcon: false // Experimental (also requires usePeakData: true).. Try to draw a "VU Meter" in the favicon area, if browser supports it (Firefox + Opera as of 2009)
 

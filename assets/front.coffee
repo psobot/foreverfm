@@ -154,16 +154,19 @@ class Waveform
       right = @offset + left
 
       # Actually draw our waveform here
+      playerset = false
       for frame in @frames
         @context.drawImage frame.image, right, 0
-        @setPlayerColor() if right < @offset and right + frame.image.width > (@offset / 2)
+        if not playerset and right < @offset and right + frame.image.width > (@offset / 2)
+          @setPlayerColor()
+          playerset = true
         right += frame.image.width
 
   __dec2hex: (i) ->
    (i+0x100).toString(16).substr(-2)
 
   setPlayerColor: ->
-    pix = @context.getImageData(parseInt(@offset / 2), parseInt(@canvas.height / 2), 1, 1).data
+    pix = @context.getImageData(@offset, parseInt(@canvas.height / 2), 1, 1).data
     window.threeSixtyPlayer.config.playRingColor = "##{@__dec2hex(pix[0])}#{@__dec2hex(pix[1])}#{@__dec2hex(pix[2])}"
 
   onNewFrame: (frame) ->
