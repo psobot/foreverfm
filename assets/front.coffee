@@ -156,7 +156,7 @@ class Waveform
       # Actually draw our waveform here
       for frame in @frames
         @context.drawImage frame.image, right, 0
-        if @right < @offset and @right + frame.image.width > (@offset / 2)
+        if right < @offset and right + frame.image.width > (@offset / 2)
           window.threeSixtyPlayer.config.playRingColor = @gethex()
         right += frame.image.width
 
