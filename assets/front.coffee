@@ -157,7 +157,7 @@ class Waveform
       playerset = false
       for frame in @frames
         @context.drawImage frame.image, right, 0
-        if not playerset and right < @offset and right + frame.image.width > (@offset / 2)
+        if not playerset and right < @offset and right + frame.image.width > @offset
           @setPlayerColor()
           playerset = true
         right += frame.image.width
