@@ -22,19 +22,19 @@ body {
       text-align: center;
       font-weight: 300;
 
-      margin: 23px auto 7px;
-      padding-top: 261px;
+      margin: 23px auto 0px;
+      padding-top: 279px;
       font-size: 54px;
 
       text-transform: lowercase;
     }
 
     h2 {
-      font-weight: 300;
+      font-weight: 100;
       text-align: center;
       color: #ccc;
       font-size: 35px;
-      margin: 0;
+      margin: -20px 0 0 0;
       text-transform: lowercase;
     }
 
@@ -50,6 +50,16 @@ body {
     left: 0;
     z-index: 0;
     width: 100%;
+
+    .stripe {
+      position: absolute;
+      background: white;
+      height: 100px;
+      top: 300px;
+      width: 100%;
+      opacity: 0.3;
+      z-index: 0;
+    }
 
     .track_container {
       position: relative;
