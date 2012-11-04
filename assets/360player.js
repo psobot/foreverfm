@@ -88,9 +88,9 @@ function ThreeSixtyPlayer() {
     // "spectrum frequency" option
     useEQData: true,
     eqDataColor: '#d5d5d5',
-    eqDataDownsample: 3, // use only one in X (of 256 values)
+    eqDataDownsample: 1, // use only one in X (of 256 values)
     eqDataOutside: true,
-    eqDataLineRatio: 1.109,
+    eqDataLineRatio: 1,
 
     // enable "amplifier" (canvas pulses like a speaker) effect
     usePeakData: true,
