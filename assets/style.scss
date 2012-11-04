@@ -266,6 +266,7 @@ body {
         }
         .buttons {
           height: 0;
+          overflow: hidden;
           @include transition(height 1s);
         }
       }
