@@ -42,7 +42,7 @@ class Mixer(multiprocessing.Process):
     def __init__(self, iqueue, oqueues, infoqueue,
                  settings=({},), initial=None,
                  max_play_time=300, transition_time=30,
-                 safety_buffer=30, samplerate=44100):
+                 samplerate=44100):
         self.iqueue = iqueue
         self.infoqueue = infoqueue
 
@@ -58,10 +58,8 @@ class Mixer(multiprocessing.Process):
 
         self.max_play_time = max_play_time
         self.transition_time = transition_time
-        self.safety_buffer = safety_buffer
         self.samplerate = 44100
         self.__stop = False
-        self.__first = True
 
         if isinstance(initial, list):
             self.add_tracks(initial)
@@ -241,26 +239,16 @@ class Mixer(multiprocessing.Process):
                         }]
                     self.infoqueue.put(d)
                     ctime += a.duration
-                self.encode(out.data)
+                for encoder in self.encoders:
+                    encoder.add_pcm(out.data)
+                del out.data
+                del out
                 gc.collect()
         except:
             log.error("Something failed in capsule.run:\n%s",
                       traceback.format_exc())
             self.stop()
             return
-
-    def encode(self, pcm_data):
-        samples = len(pcm_data)
-        put_time = time.time()
-        for encoder in self.encoders:
-            encoder.add_pcm(pcm_data)
-        done_time = time.time()
-        if not self.__first:
-            delay = max(0, (samples / float(self.samplerate)) \
-                            - (done_time - put_time) \
-                            - self.safety_buffer)
-            time.sleep(delay)
-        self.__first = False
 
     def stop(self):
         self.__stop = True

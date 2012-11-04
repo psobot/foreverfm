@@ -231,7 +231,9 @@ def main():
     Daemon()
 
     track_queue = multiprocessing.Queue(1)
-    v2_queue = BufferedReadQueue()
+    log.info("Initializing read queue to hold %2.2f seconds of audio.",
+             config.frontend_buffer)
+    v2_queue = BufferedReadQueue(int(config.frontend_buffer / SECONDS_PER_FRAME))
     info_queue = multiprocessing.Queue()
 
     mixer = Mixer(iqueue=track_queue,
