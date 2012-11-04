@@ -110,8 +110,11 @@ class Waveform
     @offset = $("#menu").outerWidth() + (MP3_BUFFER * @speed)  # Arbitrary - due to MP3 buffering
     @frames = []
     @context = @canvas.getContext "2d"
-    @canvas.width = window.innerWidth
+    @layout()
     @drawloop()
+
+  layout: ->
+    @canvas.width = window.innerWidth
 
   drawloop: ->
     @draw()
@@ -192,6 +195,9 @@ class Waveform
 
 $(document).ready ->
   w = new Waveform document.getElementById "waveform"
+  $(window).resize ->
+    w.layout()
+    w.draw()
 
   $.getJSON "all.json", (segments) ->
     for segment in segments
