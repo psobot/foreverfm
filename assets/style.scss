@@ -1,4 +1,4 @@
-html { width: 100%; }
+html { width: 100%; position: relative; height: 100%; }
 body {
   padding: 0;
   margin: 0;
@@ -6,11 +6,12 @@ body {
   font-family: "Signika", "Meta", "Helvetica", "Arial", sans-serif;
   font-weight: 300;
   width: 100%;
+  overflow-x: hidden;
 
   #menu {
     background: rgba(1.0, 1.0, 1.0, 0.55);
     width: 284px;
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     bottom: 0;
@@ -112,7 +113,7 @@ body {
     top: 0;
     left: 0;
     z-index: 0;
-    width: 100%;
+    width: 500%;
 
     .stripe {
       position: absolute;
