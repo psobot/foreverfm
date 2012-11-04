@@ -196,13 +196,15 @@ class Mixer(multiprocessing.Process):
 
         try:
             ctime = None
-            for i, actions in enumerate(self.loop()):
+            for i, _actions in enumerate(self.loop()):
                 _a = time.time()
                 log.info("Rendering audio data...")
                 ADs = []
-                for a in actions:
+                actions = []
+                for a in _actions:
                     try:
                         ADs.append(a.render())
+                        actions.append(a)
                     except:
                         log.error("Could not render %s. Skipping.\n%s", a,
                                   traceback.format_exc())
