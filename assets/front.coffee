@@ -75,6 +75,12 @@ class Frame
       <div class="text">
         <a class="title">#{@title}</a>
         <span class="artist">#{@artist}</span>
+      </div>
+      <div class='buttons'>
+        #{if @like then "<a href='#' class='like'>Like</a>" else ""}
+        #{if @share then "<a href='#' class='share'>Share</a>" else ""}
+        #{if @download then "<a href='#{@download}' class='download'>Download</a>" else ""}
+        #{if @url then "<a href='#{@url}' target='_blank' class='sc'>On SoundCloud</a>" else ""}
         #{if @stats then "
         <div class='stats'>
           #{if @playcount > 0 then "<span class='count playback'>#{@playcount}</span>" else ""}
@@ -83,14 +89,6 @@ class Frame
         </div>
         " else ""}
       </div>
-      #{if @buttons then "
-      <div class='buttons'>
-        #{if @like then "<a href='#' class='like'>Like</a>" else ""}
-        #{if @share then "<a href='#' class='share'>Share</a>" else ""}
-        #{if @download then "<a href='#{@download}' class='download'>Download</a>" else ""}
-        #{if @url then "<a href='#{@url}' target='_blank' class='sc'>On SoundCloud</a>" else ""}
-      </div>
-      " else ""}
     </div>
     """
 
