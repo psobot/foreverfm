@@ -242,10 +242,7 @@ body {
           }
         }
         .stats {
-          -webkit-transition: height 1s, margin-top 1s;
-          -moz-transition:    height 1s, margin-top 1s;
-          -o-transition:      height 1s, margin-top 1s;
-          transition:         height 1s, margin-top 1s;
+          @include transition(height 1s, margin-top 1s);
 
           height: 0;
           margin-top: 0;
@@ -266,6 +263,10 @@ body {
           span.favoritings.count {
             background: url(/static/img/sc_heart.png) left center no-repeat;
           }
+        }
+        .buttons {
+          height: 0;
+          @include transition(height 1s);
         }
       }
     }
@@ -333,6 +334,9 @@ body {
           margin: 5px 0 0 10px;
           padding: 0;
           float: left;
+        }
+        .buttons {
+          height: 26px;
         }
       }
     }
