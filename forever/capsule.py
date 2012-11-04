@@ -10,9 +10,7 @@ Created by Tristan Jehan and Jason Sundram.
 Heavily modified by Peter Sobot for integration with forever.fm.
 """
 
-import threading
-import multiprocessing
-from action import make_stereo, Blend, Crossfade
+from action import Blend, Crossfade
 
 from echonest.audio import assemble, LocalAudioStream
 from audio import AudioData
@@ -20,24 +18,24 @@ from audio import AudioData
 from capsule_support import order_tracks, resample_features, \
                             timbre_whiten, initialize, make_transition, terminate, \
                             FADE_OUT, is_valid, LOUDNESS_THRESH
+import os
+import gc
+import time
+import config
+import logging
 import urllib2
 import traceback
-import time
-import logging
-import os
-from lame import Lame
+import threading
 import soundcloud
-import config
+import multiprocessing
+from lame import Lame
 
 client = soundcloud.Client(client_id=config.SOUNDCLOUD_CLIENT_KEY)
 
-logging.basicConfig(format="%(asctime)s P%(process)-5d (%(levelname)8s) %(module)16s%(lineno)5d: %(uid)32s %(message)s")
 log = logging.getLogger(__name__)
 
 import sys
 test = 'test' in sys.argv
-
-import gc
 
 
 class Mixer(multiprocessing.Process):
@@ -122,7 +120,7 @@ class Mixer(multiprocessing.Process):
         log.info("Grabbing stream of %s", x['title'])
         laf = LocalAudioStream(self.get_stream(x))
         setattr(laf, "_metadata", x)
-        return self.process(laf)  # TODO: Fix MP3 const
+        return self.process(laf)
 
     def add_track(self, track):
         log.info("ADDING TRACK IN BACKEND: %s", track['title'])
@@ -144,9 +142,8 @@ class Mixer(multiprocessing.Process):
         track.gain = self.__db_2_volume(track.analysis.loudness)
 
         # for compatibility, we make mono tracks stereo
-        r = make_stereo(track)
         log.info("Done processing %s", track.analysis.pyechonest_track)
-        return r
+        return track
 
     def __db_2_volume(self, loudness):
         return (1.0 - LOUDNESS_THRESH * (LOUDNESS_THRESH - loudness) / 100.0)
@@ -176,8 +173,9 @@ class Mixer(multiprocessing.Process):
                                       stay_time,
                                       self.transition_time)
                 self.tracks[0].finish()
+                del self.tracks[0].analysis
                 del self.tracks[0]
-                #gc.collect()
+                gc.collect()
             log.info("Waiting for a new track.")
             try:
                 self.add_track(self.iqueue.get())  # TODO: Allow multiple tracks.

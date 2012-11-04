@@ -116,7 +116,7 @@ class Lame(threading.Thread):
             return False
         self.encode.acquire()
         samples = len(data)
-        self.__write_queue.put(data.tostring())
+        self.__write_queue.put(data)
         del data
         put_time = time.time()
         if self.buffered >= self.safety_buffer:
@@ -139,7 +139,7 @@ class Lame(threading.Thread):
                 data = data[self.chunk_size:]
                 self.buffered += len(chunk) / self.channels * (self.input_wordlength / 8)
                 try:
-                    self.lame.stdin.write(chunk)
+                    chunk.tofile(self.lame.stdin)
                     del chunk
                 except IOError:
                     self.finished = True
