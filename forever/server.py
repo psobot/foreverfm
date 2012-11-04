@@ -68,7 +68,7 @@ templates.autoescape = None
 
 class Listeners(list):
     def __init__(self, queue, name):
-        self.__queue = queue
+        self.queue = queue
         self.__name = name
         self.__packet = None
         self.__last_send = None
@@ -98,7 +98,7 @@ class Listeners(list):
             if self.__lag > 0:   # TODO: Doesn't this make this "leading?"
                 log.warning("Queue %s lag detected. (%2.2f ms)",
                             self.__name, self.__lag * 1000)
-                while self.__lag > 0 and not self.__queue.empty():
+                while self.__lag > 0 and not self.queue.empty():
                     self.__broadcast()
                     self.__lag -= SECONDS_PER_FRAME
 
@@ -107,10 +107,9 @@ class Listeners(list):
             if self.__packet and not self.__starving:
                 self.__starving = True
                 log.warning("Dropping frames! Queue %s is starving!", self.__name)
-            pass
 
     def __broadcast(self):
-        self.__packet = self.__queue.get_nowait()
+        self.__packet = self.queue.get_nowait()
         self.__starving = False
         for listener in self:
             listener.write(self.__packet)
@@ -167,6 +166,10 @@ class StreamHandler(tornado.web.RequestHandler):
     listeners = []
 
     @classmethod
+    def get_queues(cls):
+        return [k.listeners.queue for k in cls.__subclasses]
+
+    @classmethod
     def stream_frames(cls):
         for klass in cls.__subclasses:
             klass.listeners.broadcast()
@@ -215,6 +218,15 @@ class BufferedReadQueue(Queue.Queue):
         return self.qsize()
 
 
+class SocketConnection(tornadio2.conn.SocketConnection):
+    __endpoints__ = {"/info.websocket": SocketHandler}
+
+
+def watchdog():
+    for queue in StreamHandler.get_queues():
+        log.debug("Queue length: %2.2f seconds.", queue.qsize() * SECONDS_PER_FRAME)
+
+
 def main():
     Daemon()
 
@@ -244,9 +256,6 @@ def main():
     ).start()
     tornado.ioloop.PeriodicCallback(InfoHandler.clean, 5 * 1000).start()
 
-    class SocketConnection(tornadio2.conn.SocketConnection):
-        __endpoints__ = {"/info.websocket": SocketHandler}
-
     stream_routes = StreamHandler.init_streams([
         (r"/all.mp3", "All", v2_queue)
     ])
@@ -267,6 +276,8 @@ def main():
         StreamHandler.stream_frames, SECONDS_PER_FRAME * 1000
     )
     frame_sender.start()
+
+    tornado.ioloop.PeriodicCallback(watchdog, 10 * 1000).start()
 
     application.listen(config.http_port)
     tornadio2.server.SocketServer(application)
