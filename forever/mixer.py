@@ -1,17 +1,9 @@
-#!/usr/bin/env python
-# encoding: utf=8
-
 """
-capsule.py
-
-accepts songs on the commandline, order them, beatmatch them, and output an audio file
-
-Created by Tristan Jehan and Jason Sundram.
+Originally created by Tristan Jehan and Jason Sundram.
 Heavily modified by Peter Sobot for integration with forever.fm.
 """
 
 from action import Blend, Crossfade
-
 from echonest.audio import assemble, LocalAudioStream
 from audio import AudioData
 
@@ -245,7 +237,7 @@ class Mixer(multiprocessing.Process):
                 del out
                 gc.collect()
         except:
-            log.error("Something failed in capsule.run:\n%s",
+            log.error("Something failed in mixer.run:\n%s",
                       traceback.format_exc())
             self.stop()
             return

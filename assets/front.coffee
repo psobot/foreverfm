@@ -51,10 +51,19 @@ class Frame
              @tracks[0].metadata.artwork_url
            else
              @tracks[0].metadata.user.avatar_url
+
+    # Stats display
     @playcount   = @tracks[0].metadata.playback_count
     @downloads   = @tracks[0].metadata.download_count
     @favoritings = @tracks[0].metadata.favoritings_count
     @stats = @playcount? and @downloads? and @favoritings
+
+    # Buttons
+    @buttons = true
+    @like = true    # should be determined by whether or not the user is signed in
+    @share = true   # also sign-in-dependent
+    @download = true
+
     @url = @tracks[0].metadata.permalink_url
 
   html: ->
@@ -68,12 +77,20 @@ class Frame
         <span class="artist">#{@artist}</span>
         #{if @stats then "
         <div class='stats'>
-          <span class='count playback'>#{@playcount}</span>
-          <span class='count download'>#{@downloads}</span>
-          <span class='count favoritings'>#{@favoritings}</span>
+          #{if @playcount > 0 then "<span class='count playback'>#{@playcount}</span>" else ""}
+          #{if @downloads > 0 then "<span class='count download'>#{@downloads}</span>" else ""}
+          #{if @favoritings > 0 then "<span class='count favoritings'>#{@favoritings}</span>" else ""}
         </div>
         " else ""}
       </div>
+      #{if @buttons then "
+      <div class='buttons'>
+        #{if @like then "<a href='#' class='like'>Like</a>" else ""}
+        #{if @share then "<a href='#' class='share'>Share</a>" else ""}
+        #{if @download then "<a href='#{@download}' class='download'>Download</a>" else ""}
+        #{if @url then "<a href='#{@url}' target='_blank' class='sc'>On SoundCloud</a>" else ""}
+      </div>
+      " else ""}
     </div>
     """
 
@@ -87,7 +104,6 @@ class Frame
     return if @action != "Playback"
     return @relayout() if @div?
 
-    window.log "Rendering", @tracks[0].metadata.title, "played?", @played()
     parent = @intendedParent()
     $(parent).prepend @html()
     id = @id
@@ -95,11 +111,9 @@ class Frame
     @div = document.getElementById @id
 
   relayout: ->
-    window.log "Doing relayout of ", @tracks[0].metadata.title, "played?", @played()
     @div = document.getElementById(@id) if not @div.parentNode?
     newparent = document.getElementById( if @played() then "done" else "tracks" )
     if @div.parentNode != newparent
-      window.log "Adding #{@tracks[0].metadata.title} to #{newparent.id}"
       @div.parentNode.removeChild @div
       newparent.innerHTML = @html() + newparent.innerHTML
 
@@ -179,7 +193,6 @@ class Waveform
     frame.render()
     
   onCurrentFrameChange: (old, knew) ->
-    window.log "Current frame is now:", knew.action, knew.tracks[0].metadata.title
     knew.render()
     old.render() if old?
     

@@ -24,7 +24,7 @@ import tornadio2.server
 import multiprocessing
 import pyechonest.config
 from daemon import Daemon
-from capsule import Mixer
+from mixer import Mixer
 from random import shuffle
 from metadata import Metadata
 from operator import attrgetter
@@ -222,13 +222,10 @@ class SocketConnection(tornadio2.conn.SocketConnection):
     __endpoints__ = {"/info.websocket": SocketHandler}
 
 
-def watchdog():
-    for queue in StreamHandler.get_queues():
-        log.debug("Queue length: %2.2f seconds.", queue.qsize() * SECONDS_PER_FRAME)
-
-
 def main():
     Daemon()
+
+    log.info("Starting %s...", config.app_name)
 
     track_queue = multiprocessing.Queue(1)
     log.info("Initializing read queue to hold %2.2f seconds of audio.",
@@ -278,8 +275,6 @@ def main():
         StreamHandler.stream_frames, SECONDS_PER_FRAME * 1000
     )
     frame_sender.start()
-
-    tornado.ioloop.PeriodicCallback(watchdog, 10 * 1000).start()
 
     application.listen(config.http_port)
     tornadio2.server.SocketServer(application)

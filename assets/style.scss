@@ -9,6 +9,58 @@ body {
   min-height: 775px;
   overflow-x: hidden;
 
+  .button {
+    display: inline-block;
+    position: relative;
+    margin: 0;
+    padding: 6px 12px;
+    border: 1px solid #E1E1E1;
+    border-radius: 4px;
+    background-color: #FCFCFC;
+    background-image: -webkit-linear-gradient(top,
+                                              rgba(255, 255, 255, .0) 0%,
+                                              rgba(235, 235, 235, .3) 60%,
+                                              rgba(225, 225, 225, .6) 100%);
+    background-image: -moz-linear-gradient(top,
+                                           rgba(255, 255, 255, .0) 0%,
+                                           rgba(235, 235, 235, .3) 60%,
+                                           rgba(225, 225, 225, .6) 100%);
+    background-image: -o-linear-gradient(top,
+                                         rgba(255, 255, 255, .0) 0%,
+                                         rgba(235, 235, 235, .3) 60%,
+                                         rgba(225, 225, 225, .6) 100%);
+    background-image: linear-gradient(top,
+                                      rgba(255, 255, 255, .0) 0%,
+                                      rgba(235, 235, 235, .3) 60%,
+                                      rgba(225, 225, 225, .6) 100%);
+    background-clip: padding;
+    cursor: pointer;
+    overflow: hidden;
+    color: #333;
+    text-shadow: 0 1px 0 white;
+    font-size: 12px;
+    line-height: 18px;
+    white-space: nowrap;
+    text-align: center;
+    vertical-align: baseline;
+
+    @include box-shadow:(0 1px 2px rgba(0, 0, 0, .02),
+                         inset 0 1px 0 rgba(255, 255, 255, 1),
+                         inset -1px 0 0 rgba(255, 255, 255, 1),
+                         inset 0 -1px 0 rgba(255, 255, 255, .5),
+                         inset 1px 0 0 rgba(255, 255, 255, 1));
+
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+
+    @include transition(color .3s,background-color .3s,border-color .3s,text-shadow .3s,-webkit-box-shadow .3s);
+  }
+
   #menu {
     background: rgba(1.0, 1.0, 1.0, 0.55);
     width: 284px;
@@ -43,6 +95,7 @@ body {
     #player {
       width: 256px;
       margin: 29px 22px 4px;
+      overflow: hidden;
     }
 
     #footer {
