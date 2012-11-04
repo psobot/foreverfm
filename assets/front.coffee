@@ -81,14 +81,14 @@ class Frame
         #{if @share then "<a href='#' class='share'>Share</a>" else ""}
         #{if @download then "<a href='#{@download}' class='download'>Download</a>" else ""}
         #{if @url then "<a href='#{@url}' target='_blank' class='sc'>On SoundCloud</a>" else ""}
-        #{if @stats then "
-        <div class='stats'>
-          #{if @playcount > 0 then "<span class='count playback'>#{@playcount}</span>" else ""}
-          #{if @downloads > 0 then "<span class='count download'>#{@downloads}</span>" else ""}
-          #{if @favoritings > 0 then "<span class='count favoritings'>#{@favoritings}</span>" else ""}
-        </div>
-        " else ""}
       </div>
+      #{if @stats then "
+      <div class='stats'>
+        #{if @playcount > 0 then "<span class='count playback'>#{@playcount}</span>" else ""}
+        #{if @downloads > 0 then "<span class='count download'>#{@downloads}</span>" else ""}
+        #{if @favoritings > 0 then "<span class='count favoritings'>#{@favoritings}</span>" else ""}
+      </div>
+      " else ""}
     </div>
     """
 
