@@ -70,10 +70,10 @@ class Frame
     _new = @new
     @new = ''
     """
-    <a class='track #{_new}' id='#{@id}' target="_blank" href="#{@url}">
+    <div class='track #{_new}' id='#{@id}' target="_blank" href="#{@url}">
       <div class="coverart"><img src="#{@img}" /></div>
       <div class="text">
-        <span class="title">#{@title}</span>
+        <a class="title">#{@title}</a>
         <span class="artist">#{@artist}</span>
         #{if @stats then "
         <div class='stats'>
