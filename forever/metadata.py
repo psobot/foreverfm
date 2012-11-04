@@ -1,6 +1,7 @@
 import colors
 import cStringIO
 import logging
+import traceback
 
 PIXELS_PER_SECOND = 1
 
@@ -32,7 +33,7 @@ class Metadata(object):
     def color(self):
         if not self.__color:
             try:
-                if 'artwork_url' in self.obj:
+                if 'artwork_url' in self.obj and self.obj['artwork_url']:
                     art = self.obj['artwork_url']
                 else:
                     art = self.obj['user']['avatar_url']
@@ -41,6 +42,7 @@ class Metadata(object):
                 fobj = cStringIO.StringIO(self.client.get(art).raw_data)
                 self.__color = colors.colorz(fobj, 1)[0]
             except:
+                traceback.print_exc()
                 log.error("Could not get artwork colour - defaulting to black.")
                 self.__color = (0, 0, 0)
         return self.__color

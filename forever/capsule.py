@@ -24,7 +24,7 @@ import urllib2
 import traceback
 import time
 import logging
-import cStringIO
+import os
 from lame import Lame
 import soundcloud
 import config
@@ -90,10 +90,10 @@ class Mixer(multiprocessing.Process):
         return self.tracks[0]
 
     def get_stream(self, x):
-        fname = "cache/%d.mp3" % x['id']
-        try:
-            return cStringIO.StringIO(open(fname, 'r').read())
-        except IOError:
+        fname = os.path.abspath("cache/%d.mp3" % x['id'])
+        if os.path.isfile(fname):
+            return fname
+        else:
             if x['downloadable'] and x['original_format'] == "mp3":
                 url = x['download_url']
             else:
@@ -106,10 +106,10 @@ class Mixer(multiprocessing.Process):
                 log.warning("Encountered URL error while trying to fetch: %s. Retrying...", e)
                 conn = urllib2.urlopen(url)
 
-            a = cStringIO.StringIO(conn.read())
-            open(fname, 'w').write(a.read())
-            a.seek(0)
-            return a
+            f = open(fname, 'w')
+            f.write(conn.read())
+            f.close()
+            return fname
 
     def analyze(self, x):
         if isinstance(x, list):
