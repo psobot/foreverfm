@@ -11,6 +11,7 @@ import base64
 import Queue
 import config
 import logging
+import restart
 import datetime
 import customlog
 import threading
@@ -235,6 +236,12 @@ def main():
     pi.daemon = True
     pi.start()
 
+    tornado.ioloop.PeriodicCallback(
+        lambda: restart.check('restart.txt',
+                              started_at_timestamp,
+                              sum([len(x.listeners) for x in StreamHandler._StreamHandler__subclasses])),
+        config.restart_timeout * 1000
+    ).start()
     tornado.ioloop.PeriodicCallback(InfoHandler.clean, 5 * 1000).start()
 
     class SocketConnection(tornadio2.conn.SocketConnection):
