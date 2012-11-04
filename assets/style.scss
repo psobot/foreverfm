@@ -13,7 +13,7 @@ body {
     position: absolute;
     top: 0;
     left: 0;
-    height: 100%;
+    bottom: 0;
     z-index: 5;
     
     h1 {
@@ -41,6 +41,69 @@ body {
     #player {
       width: 256px;
       margin: 29px 22px 4px;
+    }
+
+    #footer {
+      text-align: center;
+      color: #ccc;
+      width: 100%;
+      position: absolute;
+      bottom: 20px;
+
+      a {
+        text-decoration: none;
+        border-bottom: 1px dashed #ccc;
+        color: #ccc;
+        margin-left: 10px;
+        &:first-child {
+          margin-left: 0;
+        }
+      }
+
+      .affiliates {
+        margin: 10px auto 0;
+        height: 27px;
+        
+        .powered {
+          display: inline-block;
+          margin: 5px 15px 0 0;
+        }
+
+        .soundcloud {
+          display: inline-block;
+          background: url(/static/img/soundcloud_gray.png) no-repeat bottom center;
+          width: 58px;
+          height: 25px;
+          border: none;
+          margin: 0 5px -6px 0;
+          span {
+            background: url(/static/img/soundcloud.png) no-repeat bottom center;
+          }
+        }
+
+        .echonest {
+          display: inline-block;
+          background: url(/static/img/echonest_gray.png) no-repeat bottom center;
+          width: 25px;
+          height: 25px;
+          margin: 0 0 -6px;
+          border: none;
+          span {
+            background: url(/static/img/echonest.png) no-repeat bottom center;
+          }
+        }
+
+        span {
+          opacity: 0;
+          -webkit-transition: opacity 1s linear;
+          -moz-transition:    opacity 1s linear;
+          -o-transition:      opacity 1s linear;
+          transition:         opacity 1s linear;
+        }
+        span:hover {
+          opacity: 1;
+        }
+      }
     }
   }
   

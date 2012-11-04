@@ -162,7 +162,7 @@ class Waveform
   __dec2hex: (i) ->
    (i+0x100).toString(16).substr(-2)
 
-  LIGHTENING: 48
+  LIGHTENING: 32
   setPlayerColor: ->
     pix = @context.getImageData(@offset, parseInt(@canvas.height / 2), 1, @canvas.height).data
     [r, g, b] = [Math.min(pix[0] + @LIGHTENING, 255),
