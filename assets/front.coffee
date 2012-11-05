@@ -86,7 +86,7 @@ class Frame
         #{if @id then "<a href='#' data-track='#{@nid}' class='like #{if (SC.favorites? and @nid in SC.favorites) then "" else ""}'>&nbsp;</a>
                        <a href='#{@twitter()}' target='_blank' class='share'>&nbsp;</a>
                       " else ""}
-        #{if @download then "<a href='#{@download}' class='download'>&nbsp;</a>" else ""}
+        #{if @download then "<a href='#{@download}' class='download' data-track='#{@nid}'>&nbsp;</a>" else ""}
         #{if @url then "<a href='#{@url}' target='_blank' class='sc'>&nbsp;</a>" else ""}
       </div>
       #{if @stats then "
@@ -277,13 +277,13 @@ $(document).ready ->
         SC.delete "/me/favorites/#{trackid}", (a) ->
           if a.status?
              $(me).removeClass('selected')
-             target = $("#track_#{track_id} .favoritings")
+             target = $("#track_#{trackid} .favoritings")
              target.html(comma(parseInt(target.html().replace(',', '')) - 1))
       else
         SC.put "/me/favorites/#{trackid}", (a) ->
           if a.status?
              $(me).addClass('selected')
-             target = $("#track_#{track_id} .favoritings")
+             target = $("#track_#{trackid} .favoritings")
              target.html(comma(parseInt(target.html().replace(',', '')) + 1))
 
   $(document).on "click", 'a.share', (e) ->
@@ -295,11 +295,15 @@ $(document).ready ->
 
   $(document).on "click", 'a.download', (e) ->
     e.preventDefault()
+    trackid = $(this).data 'track'
     me = this
     connectedly ->
       $(me).addClass('selected')
       me.href += "?oauth_token=#{SC.accessToken()}"
       window.location = me.href
+      target = $("#track_#{trackid} .downloads")
+      target.html(comma(parseInt(target.html().replace(',', '')) + 1))
+
 
   window._waveform = w
   window._socket = s
