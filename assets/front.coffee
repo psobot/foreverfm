@@ -246,7 +246,7 @@ connectedly = (callback, authenticate) ->
         callback(a)
 
 getFavorites = ->
-  SC.get "/me/favourites/", {limit: 1000}, (favoriteds) ->
+  SC.get "/me/favorites/", {limit: 1000}, (favoriteds) ->
     SC.favorites = (track.id for track in favoriteds)
 
 $(document).ready ->
