@@ -222,6 +222,19 @@ SC.initialize
   client_id: "b08793cf5964f5571db86e3ca9e5378f"
   redirect_uri: "http://beta.forever.fm/static/sc.html"
 
+connectedly = (callback) ->
+  if SC.isConnected()
+    callback()
+  else
+    token = localStorage.getItem "accessToken"
+    if token?
+      SC.accessToken token
+      callback()
+    else
+      SC.connect (a) ->
+        localStorage.setItem('accessToken', SC.accessToken()) if localStorage?
+        callback(a)
+
 $(document).ready ->
   w = new Waveform document.getElementById "waveform"
   $(window).resize ->
@@ -240,20 +253,34 @@ $(document).ready ->
     e.preventDefault()
     return if $(this).hasClass 'selected'
     me = this
-    like = ->
+    connectedly ->
       SC.put "/me/favorites/#{$(me).data('track')}", (a) ->
         $(me).addClass('selected') if a.status?
-    if SC.isConnected() then like() else SC.connect(like)
+
+  $(document).on "click", 'a.share', (e) ->
+    e.preventDefault()
+    return if $(this).hasClass 'selected'
+    me = this
+    connectedly ->
+      SC.get '/me/connections', (connections) ->
+        post_to = []
+        for connection in connections
+          if connection.post_publish
+            post_to.push
+              id: connection.id
+        SC.put "/tracks/#{$(me).data('track')}/shared-to/connections", {
+          connections: post_to
+          "sharing-note": "Check out this track I found on forever.fm!"
+        }, (a) -> $(me).addClass('selected') if a.status?
 
   $(document).on "click", 'a.download', (e) ->
     e.preventDefault()
     return if $(this).hasClass 'selected'
     me = this
-    like = ->
-      SC.put me.href, (a) ->
+    connectedly ->
+      SC.get me.href, (a) ->
         window.log a
         $(me).addClass('selected') if a.status?
-    if SC.isConnected() then like() else SC.connect(like)
 
   window._waveform = w
   window._socket = s
