@@ -386,6 +386,12 @@ body {
           opacity: 1;
         }
       }
+              
+      .track.hidden, .track.ending {
+        height: 0;
+        opacity: 0;
+      }
+
     }
 
     .tracks#done {
