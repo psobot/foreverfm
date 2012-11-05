@@ -270,7 +270,7 @@ $(document).ready ->
     me = this
     connectedly ->
       (if liked then SC.delete else SC.put) "/me/favorites/#{trackid}", (a) ->
-        (if liked then $(me).removeClass then $(me).addClass)('selected') if a.status?
+        (if liked then $(me).removeClass else $(me).addClass)('selected') if a.status?
 
   $(document).on "click", 'a.share', (e) ->
     e.preventDefault()
