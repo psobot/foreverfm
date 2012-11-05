@@ -259,6 +259,8 @@ body {
 
           font-size: 32px;
           .title {
+            color: #000;
+            text-decoration: none;
             -webkit-transition: font-size 1s;
             -moz-transition:    font-size 1s;
             -o-transition:      font-size 1s;
@@ -359,8 +361,6 @@ body {
           .title {
             display: block;
             font-size: 40px;
-            color: #000;
-            text-decoration: none;
           }
           .artist {
             display: block;
