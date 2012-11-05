@@ -81,8 +81,16 @@ body {
     text-decoration: none;
     padding: 3px 13px;
 
-    &.like, &.share, &.download {
-      
+    &.like:before, &.share:before, &.download:before, &.sc:before {
+      content: "";
+      display: block;
+      position: absolute;
+      background-repeat: no-repeat;
+      background-position: center center;
+      width: 20px;
+      height: 20px;
+      top: 0;
+      left: 2px;
     }
   }
 

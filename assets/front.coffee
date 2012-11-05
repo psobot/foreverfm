@@ -238,10 +238,11 @@ $(document).ready ->
 
   $(document).on "click", 'a.like', (e) ->
     e.preventDefault()
-    id = $(this).data('track')
+    me = this
     SC.connect ->
-      SC.put "/me/favorites/#{id}", (a) ->
-        window.log a
+      SC.put "/me/favorites/#{$(me).data('track')}", (a) ->
+        if a.status[0] == "2"
+          $(me).addClass('clicked')
     return false
 
   window._waveform = w
