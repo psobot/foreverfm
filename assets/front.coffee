@@ -272,19 +272,22 @@ $(document).ready ->
     me = this
     trackid = $(this).data 'track'
     liked = $(this).hasClass 'selected'
+    $(me).toggleClass 'selected'
     connectedly ->
       if liked
         SC.delete "/me/favorites/#{trackid}", (a) ->
           if a.status?
-             $(me).removeClass('selected')
-             target = $("#track_#{trackid} .favoritings")
-             target.html(comma(parseInt(target.html().replace(',', '')) - 1))
+            target = $("#track_#{trackid} .favoritings")
+            target.html(comma(parseInt(target.html().replace(',', '')) - 1))
+          else
+            $(me).toggleClass 'selected'
       else
         SC.put "/me/favorites/#{trackid}", (a) ->
           if a.status?
-             $(me).addClass('selected')
-             target = $("#track_#{trackid} .favoritings")
-             target.html(comma(parseInt(target.html().replace(',', '')) + 1))
+            target = $("#track_#{trackid} .favoritings")
+            target.html(comma(parseInt(target.html().replace(',', '')) + 1))
+          else
+            $(me).toggleClass 'selected'
 
   $(document).on "click", 'a.share', (e) ->
     e.preventDefault()
