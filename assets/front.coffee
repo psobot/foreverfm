@@ -267,7 +267,9 @@ $(document).ready ->
 
   $(document).on "click", 'a.share', (e) ->
     e.preventDefault()
-    window.open(this.href, "Twitter", "height=400,width=250")
+    [w, h] = [400, 300]
+    [l, t] = [screen.width / 2 - (w / 2), screen.height / 2 - (h / 2)]
+    window.open(this.href, "Twitter", "toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=no, resizable=yes,copyhistory=no,height=#{h},width=#{w},top=#{t},left=#{l}")
     $(this).addClass('selected')
 
   $(document).on "click", 'a.download', (e) ->
