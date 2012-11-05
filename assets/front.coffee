@@ -239,10 +239,15 @@ $(document).ready ->
   $(document).on "click", 'a.like', (e) ->
     e.preventDefault()
     me = this
-    SC.connect ->
+    like = ->
       SC.put "/me/favorites/#{$(me).data('track')}", (a) ->
         if a.status[0] == "2"
-          $(me).addClass('clicked')
+          $(me).addClass('selected')
+    if SC.isConnected()
+      SC.connect like
+    else
+      like()
+      
     return false
 
   window._waveform = w

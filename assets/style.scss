@@ -98,6 +98,14 @@ body {
         width: 28px;
       }
     }
+
+    &.selected {
+      text-shadow: none;
+      border: 1px solid #C8C8C8;
+      background-color: #EEE;
+      -webkit-box-shadow: 0 1px 3px rgba(0, 0, 0, .0),inset 0 2px 2px rgba(0, 0, 0, .05),inset 0 1px 1px rgba(0, 0, 0, .08),inset -2px 0 2px rgba(0, 0, 0, .03),inset 0 -1px 0 rgba(0, 0, 0, .02),inset 2px 0 2px rgba(0, 0, 0, .03);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .0),inset 0 2px 2px rgba(0, 0, 0, .05),inset 0 1px 1px rgba(0, 0, 0, .08),inset -2px 0 2px rgba(0, 0, 0, .03),inset 0 -1px 0 rgba(0, 0, 0, .02),inset 2px 0 2px rgba(0, 0, 0, .03);
+    }
   }
 
   #menu {
