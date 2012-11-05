@@ -60,8 +60,8 @@ class Frame
 
     # Buttons
     @buttons = true
-    @like = true    # should be determined by whether or not the user is signed in
-    @share = true   # also sign-in-dependent
+    @like = "/me/favorites/#{@tracks[0].metadata.id}"
+    @share = "/me/favorites/#{@tracks[0].metadata.id}"
     @download = @tracks[0].metadata.download_url
 
     @url = @tracks[0].metadata.permalink_url
@@ -80,8 +80,8 @@ class Frame
         <span class="artist">#{@artist}</span>
       </div>
       <div class='buttons'>
-        #{if @like then "<a href='#' class='like'>&nbsp;</a>" else ""}
-        #{if @share then "<a href='#' class='share'>&nbsp;</a>" else ""}
+        #{if @like then "<a href='#{@like}' class='like'>&nbsp;</a>" else ""}
+        #{if @share then "<a href='#{@share}' class='share'>&nbsp;</a>" else ""}
         #{if @download then "<a href='#{@download}' class='download'>&nbsp;</a>" else ""}
         #{if @url then "<a href='#{@url}' target='_blank' class='sc'>&nbsp;</a>" else ""}
       </div>
@@ -236,7 +236,7 @@ $(document).ready ->
   s.on 'message', (segment) ->
     w.process segment, true
 
-  $('a.like').on "click", (e) ->
+  $(document).on "click", 'a.like', (e) ->
     e.preventDefault()
     me = this
     SC.connect ->
