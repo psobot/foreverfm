@@ -218,7 +218,9 @@ class Waveform
       frame.image = this
       me.onNewFrame frame
     img.src = frame.waveform
-      
+
+SC.initialize
+  client_id: "b08793cf5964f5571db86e3ca9e5378f"
 
 $(document).ready ->
   w = new Waveform document.getElementById "waveform"
@@ -233,6 +235,13 @@ $(document).ready ->
   s = io.connect ":8193/info.websocket"
   s.on 'message', (segment) ->
     w.process segment, true
+
+  $('a.like').on "click", (e) ->
+    e.preventDefault()
+    me = this
+    SC.connect ->
+      SC.put me.href
+    return false
 
   window._waveform = w
   window._socket = s
