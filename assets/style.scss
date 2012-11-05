@@ -277,6 +277,7 @@ body {
 
           height: 0;
           margin-top: 0;
+          opacity: 0;
           overflow: hidden;
 
           color: #a4a4a4;
@@ -301,10 +302,10 @@ body {
           overflow: hidden;
           float: left;
           opacity: 0;
-          transition:         max-width 2.7s easeOutQuad .9s, opacity 2s linear 1s;
-          -webkit-transition: max-width 2.7s easeOutQuad .9s, opacity 2s linear 1s;
-          -moz-transition:    max-width 2.7s easeOutQuad .9s, opacity 2s linear 1s;
-          -o-transition:      max-width 2.7s easeOutQuad .9s, opacity 2s linear 1s;
+          transition:         max-width 2.7s cubic-bezier(0.250, 0.460, 0.450, 0.940) .9s, opacity 2s linear 1s;
+          -webkit-transition: max-width 2.7s cubic-bezier(0.250, 0.460, 0.450, 0.940) .9s, opacity 2s linear 1s;
+          -moz-transition:    max-width 2.7s cubic-bezier(0.250, 0.460, 0.450, 0.940) .9s, opacity 2s linear 1s;
+          -o-transition:      max-width 2.7s cubic-bezier(0.250, 0.460, 0.450, 0.940) .9s, opacity 2s linear 1s;
         }
       }
     }
