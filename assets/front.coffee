@@ -237,23 +237,22 @@ connectedly = (callback, authenticate) ->
     token = localStorage.getItem "accessToken"
     if token?
       SC.accessToken token
-      getFavorites()
-      callback()
+      getFavorites callback
     else if not authenticate? or authenticate
       SC.connect (a) ->
         localStorage.setItem('accessToken', SC.accessToken()) if localStorage?
-        getFavorites()
-        callback(a)
+        getFavorites callback
 
-getFavorites = ->
+getFavorites = (callback) ->
   SC.get "/me/favorites/", {limit: 1000}, (favoriteds) ->
     SC.favorites = (track.id for track in favoriteds)
+    callback SC.favorites
 
 $(document).ready ->
   w = new Waveform document.getElementById "waveform"
   
-  connectedly ->
-    $("#track_#{id} .like").addClass('selected') for id in SC.favorites
+  connectedly (favorites) ->
+    $("#track_#{id} .like").addClass('selected') for id in favorites
   , false
 
   $(window).resize ->
