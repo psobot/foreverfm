@@ -241,7 +241,8 @@ $(document).ready ->
     e.preventDefault()
     me = this
     SC.connect ->
-      SC.put "/#{me.href}"
+      SC.put "/#{me.href}", (a) ->
+        window.log a
     return false
 
   window._waveform = w
