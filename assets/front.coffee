@@ -69,7 +69,7 @@ class Frame
     if x? then x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') else x
 
   twitter: ->
-    text = "Check out this track: #{if @playing() then "playing now" else "I found"} on"
+    text = "Check out this track: #{@url} #{if @playing() then "playing now" else "I found"} on"
     "http://twitter.com/share?text=#{encodeURIComponent(text)}"
 
   html: ->
@@ -266,6 +266,8 @@ $(document).ready ->
         $(me).addClass('selected') if a.status?
 
   $(document).on "click", 'a.share', (e) ->
+    e.preventDefault()
+    window.open(this.href, "Twitter", "height=400,width=250")
     $(this).addClass('selected')
 
   $(document).on "click", 'a.download', (e) ->
