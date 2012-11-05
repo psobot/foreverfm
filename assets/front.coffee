@@ -274,8 +274,9 @@ $(document).ready ->
 
   $(document).on "click", 'a.download', (e) ->
     e.preventDefault()
+    me = this
     connectedly ->
-      $(this).addClass('selected')
+      $(me).addClass('selected')
       window.open("#{me.href}?oauth_token=#{SC.accessToken()}", "Download", "")
 
   window._waveform = w
