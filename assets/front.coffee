@@ -142,6 +142,7 @@ class Waveform
     @offset = $("#menu").outerWidth() + (MP3_BUFFER * @speed)  # Arbitrary - due to MP3 buffering
     @frames = []
     @context = @canvas.getContext "2d"
+    @overlap = 1
     @layout()
     @drawloop()
 
@@ -190,11 +191,11 @@ class Waveform
 
       # Actually draw our waveform here
       for frame in @frames
-        @context.drawImage frame.image, right, 0
-
-        # Clone the last column to prevent visual artifacts on Safari/Firefox
-        @context.putImageData(@context.getImageData(right - 2, 0, 2, @canvas.height), right, 0)
-        right += frame.image.width
+        @context.drawImage frame.image, right - @overlap, 0
+        #if @overlap > 0
+          # Clone the last column to prevent visual artifacts on Safari/Firefox
+        # @context.putImageData(@context.getImageData(right - @overlap, 0, @overlap, @canvas.height), right, 0)
+        right += frame.image.width - @overlap
       @setPlayerColor()
 
   __dec2hex: (i) ->
