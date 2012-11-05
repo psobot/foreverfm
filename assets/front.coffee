@@ -268,7 +268,7 @@ $(document).ready ->
           if connection.post_publish
             post_to.push
               id: connection.id
-        SC.put "/tracks/#{$(me).data('track')}/shared-to/connections", {
+        SC.post "/tracks/#{$(me).data('track')}/shared-to/connections", {
           connections: post_to
           "sharing-note": "Check out this track I found on forever.fm!"
         }, (a) -> $(me).addClass('selected') if a.status?
