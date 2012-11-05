@@ -87,9 +87,9 @@ class Frame
       </div>
       #{if @stats then "
       <div class='stats'>
-        #{if @playcount > 0 then "<span class='count playback'>#{@playcount}</span>" else ""}
-        #{if @downloads > 0 then "<span class='count download'>#{@downloads}</span>" else ""}
-        #{if @favoritings > 0 then "<span class='count favoritings'>#{@favoritings}</span>" else ""}
+        #{if @playcount? and @playcount != 0 then "<span class='count playback'>#{@playcount}</span>" else ""}
+        #{if @downloads? and @downloads != 0 then "<span class='count download'>#{@downloads}</span>" else ""}
+        #{if @favoritings? and @favoritings != 0 then "<span class='count favoritings'>#{@favoritings}</span>" else ""}
       </div>
       " else ""}
     </div>
