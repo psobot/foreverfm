@@ -69,7 +69,7 @@ class Frame
     if x? then x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') else x
 
   twitter: ->
-    text = "Check out this track #{if @playing() then "playing now" else "I found"} on forever.fm: #{@url}"
+    text = "Check out this track: #{if @playing() then "playing now" else "I found"} on"
     "http://twitter.com/share?text=#{encodeURIComponent(text)}"
 
   html: ->
@@ -103,7 +103,7 @@ class Frame
     (@time + @duration + MP3_BUFFER) < (+new Date / 1000)
 
   playing: ->
-    ((@time + MP3_BUFFER) < (+new Date / 1000)) and not played
+    ((@time + MP3_BUFFER) < (+new Date / 1000)) and not @played()
 
   intendedParent: ->
     document.getElementById( if @played() then "done" else "tracks" )
