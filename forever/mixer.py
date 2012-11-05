@@ -172,6 +172,9 @@ class Mixer(multiprocessing.Process):
                 log.info("Got a new track.")
             except ValueError:
                 log.warning("Track too short! Trying another.")
+            except Exception:
+                log.error("Exception while trying to add new track:\n%s",
+                          traceback.format_exc())
 
         # Last chunk. Should contain 1 instruction: fadeout.
         yield terminate(self.tracks[-1], FADE_OUT)
