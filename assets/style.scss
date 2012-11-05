@@ -288,13 +288,13 @@ body {
         }
         .buttons {
           height: 0;
-          width: 0;
+          max-width: 0;
           overflow: hidden;
           float: left;
-          transition: width 1s ease-out 1s;
-          -webkit-transition: width 1s ease-out 1s;
-          -moz-transition: width 1s ease-out 1s;
-          -o-transition: width 1s ease-out 1s;
+          transition: max-width 1s ease-in-out 1s;
+          -webkit-transition: max-width 1s ease-in-out 1s;
+          -moz-transition: max-width 1s ease-in-out 1s;
+          -o-transition: max-width 1s ease-in-out 1s;
         }
       }
     }
@@ -363,8 +363,8 @@ body {
           padding: 5px;
         }
         .buttons {
-          width: auto;
           height: 26px;
+          max-width: 100%;
         }
       }
     }
