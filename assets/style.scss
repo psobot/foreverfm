@@ -406,12 +406,17 @@ body {
         display: none;
       }
 
-      @for $i from 0 through 10 {
+      @for $i from 0 through 3 {
         .track:nth-child($i) {
-          opacity: (0.8 - $i/13);
+          opacity: (0.8 - $i/5);
           height: 40px;
           display: block;
         }
+      }
+
+      .track.hidden, .track.ending {
+        height: 0;
+        opacity: 0;
       }
     }
 
