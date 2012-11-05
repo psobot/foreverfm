@@ -269,9 +269,9 @@ $(document).ready ->
 
   $(document).on "click", 'a.like', (e) ->
     e.preventDefault()
-    trackid = $(me).data 'track'
-    liked = $(this).hasClass 'selected'
     me = this
+    trackid = $(this).data 'track'
+    liked = $(this).hasClass 'selected'
     connectedly ->
       if liked
         SC.delete "/me/favorites/#{trackid}", (a) ->
