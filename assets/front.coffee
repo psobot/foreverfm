@@ -221,6 +221,7 @@ class Waveform
 
 SC.initialize
   client_id: "b08793cf5964f5571db86e3ca9e5378f"
+  redirect_uri: "http://beta.forever.fm/static/sc.html"
 
 $(document).ready ->
   w = new Waveform document.getElementById "waveform"
