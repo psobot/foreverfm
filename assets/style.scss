@@ -218,6 +218,7 @@ body {
         margin: 10px 0;
         text-decoration: none;
         color: #000;
+        overflow: hidden;
         
         &.new { margin-bottom: 500px; opacity: 0; }
 
@@ -300,10 +301,10 @@ body {
           overflow: hidden;
           float: left;
           opacity: 0;
-          transition:         max-width 2.7s ease-in-out .9s, opacity 2s linear 1s;
-          -webkit-transition: max-width 2.7s ease-in-out .9s, opacity 2s linear 1s;
-          -moz-transition:    max-width 2.7s ease-in-out .9s, opacity 2s linear 1s;
-          -o-transition:      max-width 2.7s ease-in-out .9s, opacity 2s linear 1s;
+          transition:         max-width 2.7s easeOutQuad .9s, opacity 2s linear 1s;
+          -webkit-transition: max-width 2.7s easeOutQuad .9s, opacity 2s linear 1s;
+          -moz-transition:    max-width 2.7s easeOutQuad .9s, opacity 2s linear 1s;
+          -o-transition:      max-width 2.7s easeOutQuad .9s, opacity 2s linear 1s;
         }
       }
     }
@@ -363,6 +364,9 @@ body {
             font-size: 20px;
             padding: 0 3px;
             float: left;
+            max-width: 700px;  // HACK
+            height: 29px;
+            overflow: hidden;
           }
         }
         .stats {
@@ -389,11 +393,11 @@ body {
 
       .track {
         display: none;
-        overflow: hidden;
       }
-      @for $i from 0 through 1 {
+
+      @for $i from 0 through 10 {
         .track:nth-child($i) {
-          opacity: (0.6 - $i/5);
+          opacity: (0.8 - $i/13);
           height: 40px;
           display: block;
         }
