@@ -14,7 +14,6 @@ body {
     display: inline-block;
     position: relative;
     margin: 0;
-    padding: 6px 12px;
     border: 1px solid #E1E1E1;
     border-radius: 4px;
     background-color: #FCFCFC;
@@ -79,7 +78,7 @@ body {
     -o-transition:      color .3s,background-color .3s,border-color .3s,text-shadow .3s,-webkit-box-shadow .3s;
     transition:         color .3s,background-color .3s,border-color .3s,text-shadow .3s,-webkit-box-shadow .3s;
     text-decoration: none;
-    padding: 3px 13px;
+    padding: 1px 11px;
 
     &.like:before, &.share:before, &.download:before, &.sc:before {
       content: "";
@@ -89,8 +88,15 @@ body {
       background-position: center center;
       width: 20px;
       height: 20px;
-      top: 0;
+      top: 1px;
       left: 2px;
+    }
+
+    &.sc {
+      padding: 1px 14px;
+      &:before {
+        width: 26px;
+      }
     }
   }
 
