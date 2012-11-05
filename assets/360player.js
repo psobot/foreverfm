@@ -931,7 +931,7 @@ function ThreeSixtyPlayer() {
       for (i=0; i<eqSamples; i+=downSample) {
         startAngle = self.deg2rad(360*(i/eqSamples));
         endAngle = startAngle+perItemAngle;
-        self.drawSolidArc(oSound._360data.oCanvas,(endAngle>playedAngle?self.config.eqDataColor:self.config.playRingColor),oSound._360data.width*innerRadius,oSound._360data.radius*scale*(oSound.eqData.left[i]*direction),endAngle,startAngle,true);
+        self.drawSolidArc(oSound._360data.oCanvas,self.config.playRingColor,oSound._360data.width*innerRadius,oSound._360data.radius*scale*(oSound.eqData.left[i]*direction),endAngle,startAngle,true);
       }
     }
 
