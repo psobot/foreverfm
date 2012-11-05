@@ -191,6 +191,9 @@ class Waveform
       # Actually draw our waveform here
       for frame in @frames
         @context.drawImage frame.image, right, 0
+
+        # Clone the last column to prevent visual artifacts on Safari/Firefox
+        @context.putImageData(@context.getImageData(right, 0, 1, @canvas.height), right + 1, 0)
         right += frame.image.width
       @setPlayerColor()
 
