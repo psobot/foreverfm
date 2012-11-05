@@ -187,8 +187,11 @@ body {
     position: absolute;
     top: 0;
     left: 0;
+    bottom: 0;
     z-index: 0;
-    width: 500%;
+    width: 100%;
+    overflow-x: hidden;
+    overflow-y: visible;
 
     .stripe {
       position: absolute;
@@ -216,12 +219,17 @@ body {
         text-decoration: none;
         color: #000;
         
-        &.hidden { opacity: 0; }
         &.new { margin-bottom: 500px; opacity: 0; }
+
         -webkit-transition: opacity 1s ease-out, height 1s, margin-bottom 1s ease-out;
         -moz-transition:    opacity 1s ease-out, height 1s, margin-bottom 1s ease-out;
         -o-transition:      opacity 1s ease-out, height 1s, margin-bottom 1s ease-out;
         transition:         opacity 1s ease-out, height 1s, margin-bottom 1s ease-out;
+        
+        &.hidden {
+          height: 0;
+          opacity: 0;
+        }
 
         .coverart {
           position: relative;
@@ -381,10 +389,7 @@ body {
 
       .track {
         display: none;
-      }
-      .track.hidden {
-        display: block;
-        height: 0;
+        overflow: hidden;
       }
       @for $i from 0 through 1 {
         .track:nth-child($i) {
