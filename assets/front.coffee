@@ -60,8 +60,8 @@ class Frame
 
     # Buttons
     @buttons = true
-    @like = "/me/favorites/#{@tracks[0].metadata.id}"
-    @share = "/me/favorites/#{@tracks[0].metadata.id}"
+    @like = "me/favorites/#{@tracks[0].metadata.id}"
+    @share = "me/favorites/#{@tracks[0].metadata.id}"
     @download = @tracks[0].metadata.download_url
 
     @url = @tracks[0].metadata.permalink_url
@@ -240,7 +240,7 @@ $(document).ready ->
     e.preventDefault()
     me = this
     SC.connect ->
-      SC.put me.href
+      SC.put "/#{me.href}"
     return false
 
   window._waveform = w
