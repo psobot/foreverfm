@@ -241,9 +241,8 @@ $(document).ready ->
     me = this
     like = ->
       SC.put "/me/favorites/#{$(me).data('track')}", (a) ->
-        if a.status[0] == "2"
-          $(me).addClass('selected')
-    if SC.isConnected()
+        $(me).addClass('selected') if a.status?
+    unless SC.isConnected()
       SC.connect like
     else
       like()
