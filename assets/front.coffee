@@ -133,7 +133,7 @@ class Frame
         div.parentNode.removeChild div
         newparent.innerHTML = html + newparent.innerHTML
         setTimeout((-> $(".hidden", newparent).removeClass("hidden")), 100)
-      , 2000
+      , 1400
 
 class Waveform
   speed: 5

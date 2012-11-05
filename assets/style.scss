@@ -275,6 +275,7 @@ body {
         &.hidden, &.ending {
           height: 0;
           opacity: 0;
+          margin: 0;
         }
 
         .coverart {
@@ -437,6 +438,7 @@ body {
       .track.hidden, .track.ending {
         height: 0;
         opacity: 0;
+        margin: 0;
       }
 
     }
@@ -464,6 +466,7 @@ body {
       .track.hidden, .track.ending {
         height: 0;
         opacity: 0;
+        margin: 0;
       }
     }
 
