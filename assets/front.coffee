@@ -277,7 +277,8 @@ $(document).ready ->
     me = this
     connectedly ->
       $(me).addClass('selected')
-      window.open("#{me.href}?oauth_token=#{SC.accessToken()}", "Download", "")
+      me.href += "?oauth_token=#{SC.accessToken()}"
+      window.location = me.href
 
   window._waveform = w
   window._socket = s
