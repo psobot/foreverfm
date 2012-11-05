@@ -288,12 +288,13 @@ body {
         }
         .buttons {
           height: 0;
+          width: 0;
           overflow: hidden;
           float: left;
-          transition: height 1s;
-          -webkit-transition: height 1s;
-          -moz-transition: height 1s;
-          -o-transition: height 1s;
+          transition: width 1s ease-out 1s;
+          -webkit-transition: width 1s ease-out 1s;
+          -moz-transition: width 1s ease-out 1s;
+          -o-transition: width 1s ease-out 1s;
         }
       }
     }
@@ -362,6 +363,7 @@ body {
           padding: 5px;
         }
         .buttons {
+          width: auto;
           height: 26px;
         }
       }

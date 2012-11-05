@@ -62,7 +62,7 @@ class Frame
     @buttons = true
     @like = true    # should be determined by whether or not the user is signed in
     @share = true   # also sign-in-dependent
-    @download = true
+    @download = @tracks[0].metadata.download_url
 
     @url = @tracks[0].metadata.permalink_url
 
