@@ -227,7 +227,7 @@ body {
         -o-transition:      opacity 1s ease-out, height 1s, margin-bottom 1s ease-out;
         transition:         opacity 1s ease-out, height 1s, margin-bottom 1s ease-out;
         
-        &.hidden {
+        &.hidden, &.ending {
           height: 0;
           opacity: 0;
         }
@@ -344,7 +344,7 @@ body {
         }
       }
 
-      .track:last-child {
+      .track:last-child, .track.next {
         height: 100px;
         opacity: 1;
         .coverart {

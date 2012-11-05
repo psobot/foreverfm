@@ -70,10 +70,10 @@ class Frame
     _new = @new
     @new = ''
     """
-    <div class='track #{_new}' id='#{@id}' target="_blank" href="#{@url}">
+    <div class='track #{_new} #{if @played() then "hidden" else ""}' id='#{@id}' target="_blank" href="#{@url}">
       <div class="coverart"><img src="#{@img}" /></div>
       <div class="text">
-        <a class="title">#{@title}</a>
+        <a class="title" href="#{@url}">#{@title}</a>
         <span class="artist">#{@artist}</span>
       </div>
       <div class='buttons'>
@@ -112,8 +112,15 @@ class Frame
     @div = document.getElementById(@id) if not @div.parentNode?
     newparent = document.getElementById( if @played() then "done" else "tracks" )
     if @div.parentNode != newparent
-      @div.parentNode.removeChild @div
-      newparent.innerHTML = @html() + newparent.innerHTML
+      neighbour = @div.parentNode.children[@div.parentNode.children.length - 2]
+      $(@div).addClass("ending")
+      $(neighbour).addClass("next")
+      setTimeout ->
+        $(neighbour).removeClass("next")
+        @div.parentNode.removeChild @div
+        newparent.innerHTML = @html() + newparent.innerHTML
+        setTimeout((-> $(".hidden", newparent).removeClass("hidden")), 100)
+      , 1000
 
 class Waveform
   speed: 5
