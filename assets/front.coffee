@@ -243,12 +243,17 @@ $(document).ready ->
     like = ->
       SC.put "/me/favorites/#{$(me).data('track')}", (a) ->
         $(me).addClass('selected') if a.status?
-    unless SC.isConnected()
-      SC.connect like
-    else
-      like()
-      
-    return false
+    if SC.isConnected() then like() else SC.connect(like)
+
+  $(document).on "click", 'a.download', (e) ->
+    e.preventDefault()
+    return if $(this).hasClass 'selected'
+    me = this
+    like = ->
+      SC.put me.href, (a) ->
+        window.log a
+        $(me).addClass('selected') if a.status?
+    if SC.isConnected() then like() else SC.connect(like)
 
   window._waveform = w
   window._socket = s
