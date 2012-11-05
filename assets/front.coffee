@@ -142,7 +142,7 @@ class Waveform
     @offset = $("#menu").outerWidth() + (MP3_BUFFER * @speed)  # Arbitrary - due to MP3 buffering
     @frames = []
     @context = @canvas.getContext "2d"
-    @overlap = 0 if navigator.userAgent.match(/chrome/i)? else 1
+    @overlap = if navigator.userAgent.match(/chrome/i)? then 0 else 1
     @layout()
     @drawloop()
 
