@@ -80,7 +80,7 @@ body {
     text-decoration: none;
     padding: 1px 11px;
 
-    &.like:before, &.share:before, &.download:before, &.sc:before {
+    &.like::before, &.share::before, &.download::before, &.sc::before {
       content: "";
       display: block;
       position: absolute;

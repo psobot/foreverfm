@@ -68,6 +68,10 @@ class Frame
   comma: (x) ->
     if x? then x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') else x
 
+  twitter: ->
+    text = "Check out this track #{if @playing() then "playing now" else "I found"} on forever.fm: #{@url}"
+    "http://twitter.com/share?text=#{encodeURIComponent(text)}"
+
   html: ->
     _new = @new
     @new = ''
@@ -80,7 +84,8 @@ class Frame
       </div>
       <div class='buttons'>
         #{if @id then "<a href='#' data-track='#{@nid}' class='like'>&nbsp;</a>
-                       <a href='#' data-track='#{@nid}' class='share'>&nbsp;</a>" else ""}
+                       <a href='#{@twitter}' target='_blank' class='share'>&nbsp;</a>
+                      " else ""}
         #{if @download then "<a href='#{@download}' class='download'>&nbsp;</a>" else ""}
         #{if @url then "<a href='#{@url}' target='_blank' class='sc'>&nbsp;</a>" else ""}
       </div>
@@ -96,6 +101,9 @@ class Frame
 
   played: ->
     (@time + @duration + MP3_BUFFER) < (+new Date / 1000)
+
+  playing: ->
+    ((@time + MP3_BUFFER) < (+new Date / 1000)) and not played
 
   intendedParent: ->
     document.getElementById( if @played() then "done" else "tracks" )
@@ -258,24 +266,10 @@ $(document).ready ->
         $(me).addClass('selected') if a.status?
 
   $(document).on "click", 'a.share', (e) ->
-    e.preventDefault()
-    return if $(this).hasClass 'selected'
-    me = this
-    connectedly ->
-      SC.get '/me/connections', (connections) ->
-        post_to = []
-        for connection in connections
-          if connection.post_publish
-            post_to.push
-              id: connection.id
-        SC.post "/tracks/#{$(me).data('track')}/shared-to/connections", {
-          connections: post_to
-          "sharing-note": "Check out this track I found on forever.fm!"
-        }, (a) -> $(me).addClass('selected') if a.status?
+    $(this).addClass('selected')
 
   $(document).on "click", 'a.download', (e) ->
     e.preventDefault()
-    return if $(this).hasClass 'selected'
     me = this
     connectedly ->
       SC.get me.href, (a) ->
