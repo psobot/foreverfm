@@ -267,18 +267,16 @@ $(document).ready ->
 
   $(document).on "click", 'a.share', (e) ->
     e.preventDefault()
-    [w, h] = [400, 300]
+    [w, h] = [500, 250]
     [l, t] = [screen.width / 2 - (w / 2), screen.height / 2 - (h / 2)]
     window.open(this.href, "Twitter", "toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=no, resizable=yes,copyhistory=no,height=#{h},width=#{w},top=#{t},left=#{l}")
     $(this).addClass('selected')
 
   $(document).on "click", 'a.download', (e) ->
     e.preventDefault()
-    me = this
+    $(this).addClass('selected') if a.status?
     connectedly ->
-      SC.get me.href, (a) ->
-        window.log a
-        $(me).addClass('selected') if a.status?
+      window.open("#{me.href}?oauth_token=#{SC.accessToken()}", "Download", "")
 
   window._waveform = w
   window._socket = s
