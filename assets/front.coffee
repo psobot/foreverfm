@@ -115,10 +115,13 @@ class Frame
       neighbour = @div.parentNode.children[@div.parentNode.children.length - 2]
       $(@div).addClass("ending")
       $(neighbour).addClass("next")
+
+      div = @div
+      html = @html()
       setTimeout ->
         $(neighbour).removeClass("next")
-        @div.parentNode.removeChild @div
-        newparent.innerHTML = @html() + newparent.innerHTML
+        div.parentNode.removeChild @div
+        newparent.innerHTML = html + newparent.innerHTML
         setTimeout((-> $(".hidden", newparent).removeClass("hidden")), 100)
       , 1000
 
