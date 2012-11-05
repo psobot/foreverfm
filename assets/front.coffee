@@ -53,9 +53,9 @@ class Frame
              @tracks[0].metadata.user.avatar_url
 
     # Stats display
-    @playcount   = @tracks[0].metadata.playback_count
-    @downloads   = @tracks[0].metadata.download_count
-    @favoritings = @tracks[0].metadata.favoritings_count
+    @playcount   = @comma @tracks[0].metadata.playback_count
+    @downloads   = @comma @tracks[0].metadata.download_count
+    @favoritings = @comma @tracks[0].metadata.favoritings_count
     @stats = @playcount? and @downloads? and @favoritings
 
     # Buttons
@@ -65,6 +65,9 @@ class Frame
     @download = @tracks[0].metadata.download_url
 
     @url = @tracks[0].metadata.permalink_url
+
+  comma: (x) ->
+    if x? then x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') else x
 
   html: ->
     _new = @new
