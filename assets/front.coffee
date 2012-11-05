@@ -239,6 +239,7 @@ $(document).ready ->
   $(document).on "click", 'a.like', (e) ->
     e.preventDefault()
     id = $(this).data('track')
+    window.log id
     SC.connect ->
       SC.put "/me/favorites/#{id}", (a) ->
         window.log a
