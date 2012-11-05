@@ -238,6 +238,7 @@ $(document).ready ->
 
   $(document).on "click", 'a.like', (e) ->
     e.preventDefault()
+    return if $(this).hasClass 'selected'
     me = this
     like = ->
       SC.put "/me/favorites/#{$(me).data('track')}", (a) ->
