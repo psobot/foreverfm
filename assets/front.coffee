@@ -230,7 +230,7 @@ SC.initialize
   client_id: "b08793cf5964f5571db86e3ca9e5378f"
   redirect_uri: "http://beta.forever.fm/static/sc.html"
 
-connectedly = (callback) ->
+connectedly = (callback, authenticate) ->
   if SC.isConnected()
     callback()
   else
@@ -239,7 +239,7 @@ connectedly = (callback) ->
       SC.accessToken token
       getFavorites()
       callback()
-    else
+    else if not authenticate? or authenticate
       SC.connect (a) ->
         localStorage.setItem('accessToken', SC.accessToken()) if localStorage?
         getFavorites()
@@ -251,6 +251,9 @@ getFavorites = ->
 
 $(document).ready ->
   w = new Waveform document.getElementById "waveform"
+  
+  connectedly (->), false
+
   $(window).resize ->
     w.layout()
     w.draw()
