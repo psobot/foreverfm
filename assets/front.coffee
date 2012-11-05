@@ -10,6 +10,9 @@ soundManager.setup
 NUM_TRACKS = 5
 MP3_BUFFER = 3  # number of seconds buffered
 
+comma = (x) ->
+  if x? then x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') else x
+
 class Frame
   constructor: (init, is_new) ->
     for k, v of init
@@ -53,9 +56,9 @@ class Frame
              @tracks[0].metadata.user.avatar_url
 
     # Stats display
-    @playcount   = @comma @tracks[0].metadata.playback_count
-    @downloads   = @comma @tracks[0].metadata.download_count
-    @favoritings = @comma @tracks[0].metadata.favoritings_count
+    @playcount   = comma @tracks[0].metadata.playback_count
+    @downloads   = comma @tracks[0].metadata.download_count
+    @favoritings = comma @tracks[0].metadata.favoritings_count
     @stats = @playcount? and @downloads? and @favoritings
 
     # Buttons
@@ -64,9 +67,6 @@ class Frame
     @download = @tracks[0].metadata.download_url
 
     @url = @tracks[0].metadata.permalink_url
-
-  comma: (x) ->
-    if x? then x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') else x
 
   twitter: ->
     text = "Check out this track: #{@url} #{if @playing() then "playing now" else "I found"} on"
@@ -275,10 +275,16 @@ $(document).ready ->
     connectedly ->
       if liked
         SC.delete "/me/favorites/#{trackid}", (a) ->
-          $(me).removeClass('selected') if a.status?
+          if a.status?
+             $(me).removeClass('selected')
+             target = $("#track_#{track_id} .favoritings")
+             target.html(comma(parseInt(target.html().replace(',', '')) - 1))
       else
         SC.put "/me/favorites/#{trackid}", (a) ->
-          $(me).addClass('selected') if a.status?
+          if a.status?
+            $(me).addClass('selected')
+             target = $("#track_#{track_id} .favoritings")
+             target.html(comma(parseInt(target.html().replace(',', '')) + 1))
 
   $(document).on "click", 'a.share', (e) ->
     e.preventDefault()
