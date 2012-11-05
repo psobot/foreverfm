@@ -74,10 +74,10 @@ body {
     -moz-box-sizing: border-box;
     box-sizing: border-box;
 
-    -webkit-transition(color .3s,background-color .3s,border-color .3s,text-shadow .3s,-webkit-box-shadow .3s);
-    -moz-transition(color .3s,background-color .3s,border-color .3s,text-shadow .3s,-webkit-box-shadow .3s);
-    -o-transition(color .3s,background-color .3s,border-color .3s,text-shadow .3s,-webkit-box-shadow .3s);
-    transition(color .3s,background-color .3s,border-color .3s,text-shadow .3s,-webkit-box-shadow .3s);
+    -webkit-transition: color .3s,background-color .3s,border-color .3s,text-shadow .3s,-webkit-box-shadow .3s;
+    -moz-transition:    color .3s,background-color .3s,border-color .3s,text-shadow .3s,-webkit-box-shadow .3s;
+    -o-transition:      color .3s,background-color .3s,border-color .3s,text-shadow .3s,-webkit-box-shadow .3s;
+    transition:         color .3s,background-color .3s,border-color .3s,text-shadow .3s,-webkit-box-shadow .3s;
     text-decoration: none;
     padding: 3px 13px;
   }
@@ -261,10 +261,10 @@ body {
           }
         }
         .stats {
-          -webkit-transition(height 1s, margin-top 1s);
-          -moz-transition(height 1s, margin-top 1s);
-          -o-transition(height 1s, margin-top 1s);
-          transition(height 1s, margin-top 1s);
+          -webkit-transition: height 1s, margin-top 1s;
+          -moz-transition: height 1s, margin-top 1s;
+          -o-transition: height 1s, margin-top 1s;
+          transition: height 1s, margin-top 1s;
 
           height: 0;
           margin-top: 0;
@@ -290,10 +290,10 @@ body {
           height: 0;
           overflow: hidden;
           float: left;
-          transition(height 1s);
-          -webkit-transition(height 1s);
-          -moz-transition(height 1s);
-          -o-transition(height 1s);
+          transition: height 1s;
+          -webkit-transition: height 1s;
+          -moz-transition: height 1s;
+          -o-transition: height 1s;
         }
       }
     }
