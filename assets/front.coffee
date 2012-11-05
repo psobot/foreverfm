@@ -252,7 +252,9 @@ getFavorites = ->
 $(document).ready ->
   w = new Waveform document.getElementById "waveform"
   
-  connectedly (->), false
+  connectedly ->
+    $("#track_#{id} .like").addClass('selected') for id in SC.favorites
+  , false
 
   $(window).resize ->
     w.layout()
