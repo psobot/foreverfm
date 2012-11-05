@@ -282,7 +282,7 @@ $(document).ready ->
       else
         SC.put "/me/favorites/#{trackid}", (a) ->
           if a.status?
-            $(me).addClass('selected')
+             $(me).addClass('selected')
              target = $("#track_#{track_id} .favoritings")
              target.html(comma(parseInt(target.html().replace(',', '')) + 1))
 
