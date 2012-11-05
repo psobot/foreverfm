@@ -83,7 +83,7 @@ class Frame
         <span class="artist">#{@artist}</span>
       </div>
       <div class='buttons'>
-        #{if @id then "<a href='#' data-track='#{@nid}' class='like #{if (@nid in SC.favorites) then "" else ""}'>&nbsp;</a>
+        #{if @id then "<a href='#' data-track='#{@nid}' class='like #{if (SC.favorites? and @nid in SC.favorites) then "" else ""}'>&nbsp;</a>
                        <a href='#{@twitter()}' target='_blank' class='share'>&nbsp;</a>
                       " else ""}
         #{if @download then "<a href='#{@download}' class='download'>&nbsp;</a>" else ""}
