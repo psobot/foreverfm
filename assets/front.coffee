@@ -71,9 +71,9 @@ class Frame
     @new = ''
     """
     <div class='track #{_new} #{if @played() then "hidden" else ""}' id='#{@id}' target="_blank" href="#{@url}">
-      <div class="coverart"><img src="#{@img}" /></div>
+      <a class="coverart" href="#{@url}" target="_blank"><img src="#{@img}" /></a>
       <div class="text">
-        <a class="title" href="#{@url}">#{@title}</a>
+        <a class="title" href="#{@url}" target="_blank">#{@title}</a>
         <span class="artist">#{@artist}</span>
       </div>
       <div class='buttons'>
