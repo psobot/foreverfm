@@ -83,7 +83,7 @@ class Frame
         <span class="artist">#{@artist}</span>
       </div>
       <div class='buttons'>
-        #{if @id then "<a href='#' data-track='#{@nid}' class='like'>&nbsp;</a>
+        #{if @id then "<a href='#' data-track='#{@nid}' class='like #{if (@nid in SC.favorites) then "" else ""}'>&nbsp;</a>
                        <a href='#{@twitter()}' target='_blank' class='share'>&nbsp;</a>
                       " else ""}
         #{if @download then "<a href='#{@download}' class='download'>&nbsp;</a>" else ""}
@@ -237,11 +237,17 @@ connectedly = (callback) ->
     token = localStorage.getItem "accessToken"
     if token?
       SC.accessToken token
+      getFavorites()
       callback()
     else
       SC.connect (a) ->
         localStorage.setItem('accessToken', SC.accessToken()) if localStorage?
+        getFavorites()
         callback(a)
+
+getFavorites = ->
+  SC.get "/me/favourites/", {limit: 1000}, (favoriteds) ->
+    SC.favorites = (track.id for track in favoriteds)
 
 $(document).ready ->
   w = new Waveform document.getElementById "waveform"
@@ -259,11 +265,12 @@ $(document).ready ->
 
   $(document).on "click", 'a.like', (e) ->
     e.preventDefault()
-    return if $(this).hasClass 'selected'
+    trackid = $(me).data 'track'
+    liked = $(this).hasClass 'selected'
     me = this
     connectedly ->
-      SC.put "/me/favorites/#{$(me).data('track')}", (a) ->
-        $(me).addClass('selected') if a.status?
+      (if liked then SC.delete else SC.put) "/me/favorites/#{trackid}", (a) ->
+        (if liked then $(me).removeClass then $(me).addClass)('selected') if a.status?
 
   $(document).on "click", 'a.share', (e) ->
     e.preventDefault()

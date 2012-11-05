@@ -16,11 +16,8 @@ Cluster = namedtuple('Cluster', ('points', 'center', 'n'))
 
 
 def get_points(img):
-    points = []
-    w, h = img.size
-    for count, color in img.getcolors(w * h):
-        points.append(Point(color, 3, count))
-    return points
+    return [Point(color, 3, count)
+            for count, color in img.getcolors(img.size[0] * img.size[1])]
 
 rtoh = lambda rgb: '#%s' % ''.join(('%02x' % p for p in rgb))
 
