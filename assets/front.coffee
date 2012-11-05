@@ -301,7 +301,7 @@ $(document).ready ->
       $(me).addClass('selected')
       me.href += "?oauth_token=#{SC.accessToken()}"
       window.location = me.href
-      target = $("#track_#{trackid} .download")
+      target = $("#track_#{trackid} .stats .count.download")
       target.html(comma(parseInt(target.html().replace(',', '')) + 1))
 
 
