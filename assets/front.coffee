@@ -60,7 +60,7 @@ class Frame
 
     # Buttons
     @buttons = true
-    @id = @tracks[0].metadata.id
+    @nid = @tracks[0].metadata.id
     @download = @tracks[0].metadata.download_url
 
     @url = @tracks[0].metadata.permalink_url
@@ -79,8 +79,8 @@ class Frame
         <span class="artist">#{@artist}</span>
       </div>
       <div class='buttons'>
-        #{if @id then "<a href='#' data-track='#{@like}' class='like'>&nbsp;</a>
-                       <a href='#' data-track='#{@like}' class='share'>&nbsp;</a>" else ""}
+        #{if @id then "<a href='#' data-track='#{@nid}' class='like'>&nbsp;</a>
+                       <a href='#' data-track='#{@nid}' class='share'>&nbsp;</a>" else ""}
         #{if @download then "<a href='#{@download}' class='download'>&nbsp;</a>" else ""}
         #{if @url then "<a href='#{@url}' target='_blank' class='sc'>&nbsp;</a>" else ""}
       </div>
@@ -239,7 +239,6 @@ $(document).ready ->
   $(document).on "click", 'a.like', (e) ->
     e.preventDefault()
     id = $(this).data('track')
-    window.log id
     SC.connect ->
       SC.put "/me/favorites/#{id}", (a) ->
         window.log a
