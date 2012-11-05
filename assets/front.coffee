@@ -84,7 +84,7 @@ class Frame
       </div>
       <div class='buttons'>
         #{if @id then "<a href='#' data-track='#{@nid}' class='like'>&nbsp;</a>
-                       <a href='#{@twitter}' target='_blank' class='share'>&nbsp;</a>
+                       <a href='#{@twitter()}' target='_blank' class='share'>&nbsp;</a>
                       " else ""}
         #{if @download then "<a href='#{@download}' class='download'>&nbsp;</a>" else ""}
         #{if @url then "<a href='#{@url}' target='_blank' class='sc'>&nbsp;</a>" else ""}
