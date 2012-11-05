@@ -270,10 +270,10 @@ body {
           }
         }
         .stats {
-          -webkit-transition: height 1s, margin-top 1s;
-          -moz-transition: height 1s, margin-top 1s;
-          -o-transition: height 1s, margin-top 1s;
-          transition: height 1s, margin-top 1s;
+          -webkit-transition: height 1s, margin-top 1s, opacity 1s linear 2s;
+          -moz-transition:    height 1s, margin-top 1s, opacity 1s linear 2s;
+          -o-transition:      height 1s, margin-top 1s, opacity 1s linear 2s;
+          transition:         height 1s, margin-top 1s, opacity 1s linear 2s;
 
           height: 0;
           margin-top: 0;
@@ -339,6 +339,7 @@ body {
         .stats {
           height: 16px;
           margin-top: 4px;
+          opacity: 1;
         }
       }
 
@@ -374,6 +375,7 @@ body {
           height: 24px;
           margin: 0;
           padding: 5px;
+          opacity: 1;
         }
         .buttons {
           height: 26px;
