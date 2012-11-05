@@ -80,10 +80,10 @@ class Frame
         <span class="artist">#{@artist}</span>
       </div>
       <div class='buttons'>
-        #{if @like then "<a href='#' class='like'>Like</a>" else ""}
-        #{if @share then "<a href='#' class='share'>Share</a>" else ""}
-        #{if @download then "<a href='#{@download}' class='download'>Download</a>" else ""}
-        #{if @url then "<a href='#{@url}' target='_blank' class='sc'>On SoundCloud</a>" else ""}
+        #{if @like then "<a href='#' class='like'>&nbsp;</a>" else ""}
+        #{if @share then "<a href='#' class='share'>&nbsp;</a>" else ""}
+        #{if @download then "<a href='#{@download}' class='download'>&nbsp;</a>" else ""}
+        #{if @url then "<a href='#{@url}' target='_blank' class='sc'>&nbsp;</a>" else ""}
       </div>
       #{if @stats then "
       <div class='stats'>
