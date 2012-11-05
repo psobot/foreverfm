@@ -445,7 +445,7 @@ body {
 
     .tracks#done {
       position: absolute;
-      top: 700px;
+      top: 710px;
       left: 284px;
       right: 0;
       overflow: hidden;
@@ -455,9 +455,9 @@ body {
         display: none;
       }
 
-      @for $i from 0 through 3 {
+      @for $i from 0 through 20 {
         .track:nth-child($i) {
-          opacity: (0.8 - $i/5);
+          opacity: (0.8 - $i/32);
           height: 40px;
           display: block;
         }

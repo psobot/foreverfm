@@ -9,6 +9,7 @@ soundManager.setup
 
 NUM_TRACKS = 5
 MP3_BUFFER = 3  # number of seconds buffered
+DONE_TRACKS_LIMIT = 20
 
 comma = (x) ->
   if x? then x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') else x
@@ -132,7 +133,15 @@ class Frame
         $(neighbour).removeClass("next")
         div.parentNode.removeChild div
         newparent.innerHTML = html + newparent.innerHTML
-        setTimeout((-> $(".hidden", newparent).removeClass("hidden")), 100)
+        setTimeout ->
+          $(".hidden", newparent).removeClass('hidden')
+          if newparent.children.length > DONE_TRACKS_LIMIT
+            end = newparent.children[newparent.children.length - 1]
+            $(end).addClass('hidden')
+            setTimeout ->
+              newparent.removeChild end
+            , 1000
+        , 100
       , 1400
 
 class Waveform
