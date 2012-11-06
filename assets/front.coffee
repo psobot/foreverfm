@@ -9,7 +9,7 @@ soundManager.setup
 
 NUM_TRACKS = 5
 MP3_BUFFER = 3  # number of seconds buffered
-DONE_TRACKS_LIMIT = 5
+DONE_TRACKS_LIMIT = 4
 
 comma = (x) ->
   if x? then x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') else x
