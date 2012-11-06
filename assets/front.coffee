@@ -67,6 +67,9 @@ class Frame
     @nid = @tracks[0].metadata.id
     @download = @tracks[0].metadata.download_url
 
+    @purchaselink = @tracks[0].metadata.purchase_url
+    @purchasetext = @tracks[0].metadata.purchase_title
+
     @url = @tracks[0].metadata.permalink_url
 
   twitter: ->
@@ -90,6 +93,7 @@ class Frame
                       " else ""}
         #{if @download then "<a href='#{@download}' class='download' data-track='#{@nid}'>&nbsp;</a>" else ""}
         #{if @url then "<a href='#{@url}' target='_blank' class='sc'>&nbsp;</a>" else ""}
+        #{if @purchaselink and @purchasetext then "<a href='#{@purchaselink}' target='_blank' class='buy'>#{@purchasetext}</a>" else ""}
       </div>
       #{if @stats then "
       <div class='stats'>
