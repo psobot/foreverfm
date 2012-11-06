@@ -118,7 +118,7 @@ def add_tracks():
             log.info("Got %d tracks in %2.2fms.", len(tracks), t.ms)
             log.info("Solving TSP on %d tracks...", len(tracks))
             with Timer() as t:
-                tracks = [tracks[i] for i in tsp.solve(tracks, distance, len(tracks))]
+                tracks = [tracks[i] for i in tsp.solve(tracks, distance, len(tracks) * config.tsp_mult)]
             log.info("Solved TSP in %2.2fms.", t.ms)
 
             if last:
