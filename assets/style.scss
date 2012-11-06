@@ -1,4 +1,3 @@
-
 html { width: 100%; position: relative; height: 100%; }
 body {
   padding: 0;
@@ -7,7 +6,6 @@ body {
   font-family: "Signika", "Meta", "Helvetica", "Arial", sans-serif;
   font-weight: 300;
   width: 100%;
-  min-height: 775px;
   overflow-x: hidden;
 
   .button, .buttons a {
@@ -455,9 +453,9 @@ body {
         display: none;
       }
 
-      @for $i from 0 through 20 {
+      @for $i from 0 through 5 {
         .track:nth-child($i) {
-          opacity: (0.8 - $i/32);
+          opacity: (0.5 - $i/12);
           height: 40px;
           display: block;
         }
