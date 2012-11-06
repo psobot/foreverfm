@@ -30,7 +30,7 @@ class Frame
     @parseMetaData()
 
   parseMetaData: ->
-    matches = @tracks[0].metadata.title.match(/(.*?)\s*-\s*(.*)/i)
+    matches = @tracks[0].metadata.title.match(/(.*?)\s+-\s+(.*)/i)
     if matches?
       [_, @artist, @title] = matches
     else
