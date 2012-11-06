@@ -71,7 +71,6 @@ class MainHandler(tornado.web.RequestHandler):
 
 class InfoHandler(tornado.web.RequestHandler):
     actions = []
-    offset = 60  # extra seconds to save info for
 
     @classmethod
     def add(self, data):
@@ -83,7 +82,7 @@ class InfoHandler(tornado.web.RequestHandler):
     def clean(cls):
         now = time.time()
         while cls.actions and cls.actions[0]['time'] \
-                     + cls.actions[0]['duration'] + cls.offset < now:
+                     + cls.actions[0]['duration'] + config.past_track_offset < now:
             cls.actions.pop(0)
 
     def get(self):
