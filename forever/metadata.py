@@ -1,7 +1,9 @@
 import colors
+import config
 import cStringIO
 import logging
 import traceback
+import soundcloud
 
 PIXELS_PER_SECOND = 1
 
@@ -9,7 +11,7 @@ log = logging.getLogger(__name__)
 
 
 class Metadata(object):
-    client = None
+    client = soundcloud.Client(client_id=config.SOUNDCLOUD_CLIENT_KEY)
     __color = None
 
     def __init__(self, obj):
