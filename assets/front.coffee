@@ -73,11 +73,12 @@ class Frame
     text = "Check out this track: #{@url} #{if @playing() then "playing now" else "I found"} on"
     "http://twitter.com/share?text=#{encodeURIComponent(text)}"
 
-  html: ->
+  html: (first) ->
+    first = false if not first?
     _new = @new
     @new = ''
     """
-    <div class='track #{_new} #{if @played() then "hidden" else ""}' id='#{@id}' target="_blank" href="#{@url}">
+    <div class='track #{_new} #{if @played() and not first then "hidden" else ""}' id='#{@id}' target="_blank" href="#{@url}">
       <a class="coverart" href="#{@url}" target="_blank"><img src="#{@img}" /></a>
       <div class="text">
         <a class="title" href="#{@url}" target="_blank">#{@title}</a>
@@ -114,7 +115,7 @@ class Frame
     return @relayout() if @div?
 
     parent = @intendedParent()
-    $(parent).prepend @html()
+    $(parent).prepend @html(true)
     id = @id
     setTimeout((-> $("##{id}").removeClass 'new hidden'), 100)
     @div = document.getElementById @id
