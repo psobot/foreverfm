@@ -82,7 +82,7 @@ class InfoHandler(tornado.web.RequestHandler):
     def clean(cls):
         now = time.time()
         while cls.actions and cls.actions[0]['time'] \
-                     + cls.actions[0]['duration'] + config.past_track_offset < now:
+                     + cls.actions[0]['duration'] + config.past_played_buffer < now:
             cls.actions.pop(0)
 
     def get(self):
