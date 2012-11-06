@@ -289,7 +289,7 @@ $(document).ready ->
   $(document).on "click", 'a.like', (e) ->
     e.preventDefault()
     me = this
-    trackid = $(this).data 'track'
+    trackid = parseInt $(this).data 'track'
     liked = $(this).hasClass 'selected'
     $(me).toggleClass 'selected'
     connectedly ->
@@ -298,6 +298,8 @@ $(document).ready ->
           if a.status?
             target = $("#track_#{trackid} .favoritings")
             target.html(comma(parseInt(target.html().replace(',', '')) - 1))
+            idx = SC.favorites.indexof(trackid)
+            SC.favorites.splice(idx, 1) if idx > -1
           else
             $(me).toggleClass 'selected'
       else
@@ -305,6 +307,7 @@ $(document).ready ->
           if a.status?
             target = $("#track_#{trackid} .favoritings")
             target.html(comma(parseInt(target.html().replace(',', '')) + 1))
+            SC.favorites.push trackid
           else
             $(me).toggleClass 'selected'
 
