@@ -69,6 +69,7 @@ class Frame
 
     @purchaselink = @tracks[0].metadata.purchase_url
     @purchasetext = @tracks[0].metadata.purchase_title
+    @purchasetext = "Buy" if not @purchasetext?
 
     @url = @tracks[0].metadata.permalink_url
 
