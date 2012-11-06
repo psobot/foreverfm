@@ -116,7 +116,7 @@ class Frame
     parent = @intendedParent()
     $(parent).prepend @html()
     id = @id
-    setTimeout((-> $("##{id}").removeClass 'new'), 100)
+    setTimeout((-> $("##{id}").removeClass 'new hidden'), 100)
     @div = document.getElementById @id
 
   relayout: ->
