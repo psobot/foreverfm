@@ -10,6 +10,7 @@ soundManager.setup
 NUM_TRACKS = 5
 MP3_BUFFER = 3  # number of seconds buffered
 DONE_TRACKS_LIMIT = 4
+MAGIC_REGEX = /(\s*-*\s*((\[|\(|\*|~)[^\)\]]*(mp3|dl|description|free|download|comment|out now|clip|bonus|preview|teaser|in store|follow|radio|prod|full|snip|exclusive|beatport|original mix)+[^\)\]]*(\]|\)|\*|~)|((OUT NOW( ON \w*)?|free|download|preview|teaser|in store|follow|mp3|dl|description|full|snip|exclusive|beatport|original mix).*$))\s*|\[(.*?)\])/i
 
 comma = (x) ->
   if x? then x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') else x
@@ -30,13 +31,13 @@ class Frame
     @parseMetaData()
 
   parseMetaData: ->
-    matches = @tracks[0].metadata.title.match(/(.*?)\s+-\s+(.*)/i)
+    matches = @tracks[0].metadata.title.match(/(.*?) by (.*)/i)
     if matches?
-      [_, @artist, @title] = matches
+      [_, @title, @artist] = matches
     else
-      matches = @tracks[0].metadata.title.match(/(.*?) by (.*)/i)
+      matches = @tracks[0].metadata.title.match(/(.*?)\s+-\s+(.*)/i)
       if matches?
-        [_, @title, @artist] = matches
+        [_, @artist, @title] = matches
       else
         @title = @tracks[0].metadata.title
         @artist = @tracks[0].metadata.user.username
@@ -46,7 +47,8 @@ class Frame
       [_, @title, _, other] = matches
     
     #   Remove "Free Download," "Follow Me" and the like
-    @title = @title.replace /(\s*-*\s*((\[|\(|\*|~)[^\)\]]*(mp3|dl|description|free|download|comment|out now|clip|bonus|preview|teaser|in store|follow|radio|prod|full|snip|exclusive|beatport|original mix)+[^\)\]]*(\]|\)|\*|~)|((OUT NOW( ON \w*)?|free|download|preview|teaser|in store|follow|mp3|dl|description|full|snip|exclusive|beatport|original mix).*$))\s*|\[(.*?)\])/i, ""
+    @title = @title.replace MAGIC_REGEX, ""
+    @artist = @artist.replace MAGIC_REGEX, ""
 
     if @title[0] == '"' and @title[@title.length - 1] == '"'
       @title = @title[1...@title.length - 1].trim()
