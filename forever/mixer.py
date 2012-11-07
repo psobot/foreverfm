@@ -3,7 +3,6 @@ Originally created by Tristan Jehan and Jason Sundram.
 Heavily modified by Peter Sobot for integration with forever.fm.
 """
 
-from action import Blend, Crossfade
 from echonest.audio import assemble, LocalAudioStream
 from audio import AudioData
 
@@ -28,6 +27,43 @@ log = logging.getLogger(__name__)
 
 import sys
 test = 'test' in sys.argv
+
+
+def metadata_of(a):
+    if hasattr(a, '_metadata'):
+        return a._metadata
+    if hasattr(a, 'track'):
+        return metadata_of(a.track)
+    if hasattr(a, 't1') and hasattr(a, 't2'):
+        return (metadata_of(a.t1), metadata_of(a.t2))
+    raise ValueError("No metadata found!")
+
+
+def generate_metadata(a, ctime):
+    d = {
+        'time': ctime,
+        'action': a.__class__.__name__.split(".")[-1],
+        'duration': a.duration
+    }
+    m = metadata_of(a)
+    if isinstance(m, tuple):
+        m1, m2 = m
+        d['tracks'] = [{
+            "metadata": m1,
+            "start": a.l1[0][0],
+            "end": sum(a.l1[-1])
+        }, {
+            "metadata": m2,
+            "start": a.l2[0][0],
+            "end": sum(a.l2[-1])
+        }]
+    else:
+        d['tracks'] = [{
+            "metadata": m,
+            "start": a.start,
+            "end": a.start + a.duration
+        }]
+    return d
 
 
 class Mixer(multiprocessing.Process):
@@ -208,35 +244,17 @@ class Mixer(multiprocessing.Process):
 
                 del ADs
                 gc.collect()
-
-                if not ctime:
-                    ctime = time.time()
-                for a in actions:
-                    d = {
-                        'time': ctime,
-                        'action': a.__class__.__name__.split(".")[-1],
-                        'duration': a.duration
-                    }
-                    if isinstance(a, Blend) or isinstance(a, Crossfade):
-                        d['tracks'] = [{
-                            "metadata": a.t1._metadata,
-                            "start": a.l1[0][0],
-                            "end": sum(a.l1[-1])
-                        }, {
-                            "metadata": a.t2._metadata,
-                            "start": a.l2[0][0],
-                            "end": sum(a.l2[-1])
-                        }]
-                    else:
-                        d['tracks'] = [{
-                            "metadata": a.track._metadata,
-                            "start": a.start,
-                            "end": a.start + a.duration
-                        }]
-                    self.infoqueue.put(d)
-                    ctime += a.duration
-                for encoder in self.encoders:
-                    encoder.add_pcm(out.data)
+                try:
+                    if not ctime:
+                        ctime = time.time()
+                    for a in actions:
+                        self.infoqueue.put(generate_metadata(a, ctime))
+                        ctime += a.duration
+                    for encoder in self.encoders:
+                        encoder.add_pcm(out.data)
+                except:
+                    log.error("Could not generate info or encode:\n%s",
+                              traceback.format_exc())
                 del out.data
                 del out
                 gc.collect()
