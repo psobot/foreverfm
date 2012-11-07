@@ -37,7 +37,7 @@ class Frame
       matches = @artist.match(/(.*?)\s+-\s+(.*)/i)
       [_, @artist, other] = matches if matches?
     else
-      matches = @tracks[0].metadata.title.match(/(.*?)\s+-\s+(.*)/i)
+      matches = @tracks[0].metadata.title.match(/(.*?)\s*-\s+(.*)/i)
       if matches?
         [_, @artist, @title] = matches
       else
