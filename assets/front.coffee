@@ -34,6 +34,8 @@ class Frame
     matches = @tracks[0].metadata.title.match(/(.*?) by (.*)/i)
     if matches?
       [_, @title, @artist] = matches
+      matches = @artist.match(/(.*?)\s+-\s+(.*)/i)
+      [_, @artist, other] = matches if matches?
     else
       matches = @tracks[0].metadata.title.match(/(.*?)\s+-\s+(.*)/i)
       if matches?
