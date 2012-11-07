@@ -46,7 +46,7 @@ class Frame
       [_, @title, _, other] = matches
     
     #   Remove "Free Download," "Follow Me" and the like
-    @title = @title.replace /(\s*-*\s*((\[|\(|\*)[^\)\]]*(mp3|dl|description|free|download|comment|out now|clip|bonus|preview|teaser|in store|follow|radio|prod|full|snip|exclusive|beatport)+[^\)\]]*(\]|\)|\*)|((OUT NOW( ON \w*)?|free|download|preview|teaser|in store|follow|mp3|dl|description|full|snip|exclusive|beatport).*$))\s*|\[(.*?)\])/i, ""
+    @title = @title.replace /(\s*-*\s*((\[|\(|\*)[^\)\]]*(mp3|dl|description|free|download|comment|out now|clip|bonus|preview|teaser|in store|follow|radio|prod|full|snip|exclusive|beatport|original mix)+[^\)\]]*(\]|\)|\*)|((OUT NOW( ON \w*)?|free|download|preview|teaser|in store|follow|mp3|dl|description|full|snip|exclusive|beatport|original mix).*$))\s*|\[(.*?)\])/i, ""
 
     if @title[0] == '"' and @title[@title.length - 1] == '"'
       @title = @title[1...@title.length - 1].trim()
