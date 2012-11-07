@@ -107,30 +107,22 @@ class Mixer(multiprocessing.Process):
         if isinstance(x, tuple):
             return self.analyze(*x)
 
-        log.info("Grabbing stream of %s", x['title'])
+        log.info("Grabbing stream of SC# %d", x['id'])
         laf = LocalAudioStream(self.get_stream(x))
         setattr(laf, "_metadata", x)
         return self.process(laf)
 
     def add_track(self, track):
-        log.info("ADDING TRACK IN BACKEND: %s", track['title'])
-        try:
-            self.tracks.append(self.analyze(track))
-        except:
-            log.error("Could not add track: \n%s", traceback.format_exc())
-            raise
+        self.tracks.append(self.analyze(track))
 
     def add_tracks(self, tracks):
-        try:
-            self.tracks += order_tracks(self.analyze(tracks))
-        except:
-            log.error("Could not add tracks: \n%s", traceback.format_exc())
-            raise
+        self.tracks += order_tracks(self.analyze(tracks))
 
     def process(self, track):
         if not hasattr(track.analysis.pyechonest_track, "title"):
             setattr(track.analysis.pyechonest_track, "title", track._metadata.get('title', "<unknown>"))
-        log.info("Resampling features for %s", track.analysis.pyechonest_track)
+        log.info("Resampling features for %d (%s)", track._metadata.get('id', -1),
+                                                    track.analysis.pyechonest_track)
         track.resampled = resample_features(track, rate='beats')
         track.resampled['matrix'] = timbre_whiten(track.resampled['matrix'])
 
@@ -153,8 +145,9 @@ class Mixer(multiprocessing.Process):
             try:
                 self.add_track(track)  # TODO: Extend to allow multiple tracks.
                 log.info("Got a new track.")
-            except Exception, e:
-                log.error("Could not add track due to %s! Skipping...", e)
+            except Exception:
+                log.error("Exception while trying to add new track:\n%s",
+                          traceback.format_exc())
 
         # Initial transition. Should contain 2 instructions: fadein, and playback.
         inter = self.tracks[0].analysis.duration - self.transition_time * 3
