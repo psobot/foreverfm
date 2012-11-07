@@ -620,105 +620,6 @@ function ThreeSixtyPlayer() {
 
   };
 
-  this.buttonMouseDown = function(e) {
-
-    // user might decide to drag from here
-    // watch for mouse move
-    if (!isTouchDevice) {
-      document.onmousemove = function(e) {
-        // should be boundary-checked, really (eg. move 3px first?)
-        self.mouseDown(e);
-      };
-    } else {
-      self.addEventHandler(document,'touchmove',self.mouseDown);
-    }
-    self.stopEvent(e);
-    return false;
-
-  };
-
-  this.mouseDown = function(e) {
-
-    if (!isTouchDevice && e.button > 1) {
-      return true; // ignore non-left-click
-    }
-
-    if (!self.lastSound) {
-      self.stopEvent(e);
-      return false;
-    }
-
-    var evt = e?e:window.event,
-        target, thisSound, oData;
-
-    if (isTouchDevice && evt.touches) {
-      evt = evt.touches[0];
-    }
-    target = (evt.target||evt.srcElement);
-
-    thisSound = self.getSoundByURL(self.getElementsByClassName('sm2_link','a',self.getParentByClassName(target,'ui360'))[0].href); // self.lastSound; // TODO: In multiple sound case, figure out which sound is involved etc.
-    // just in case, update coordinates (maybe the element moved since last time.)
-    self.lastTouchedSound = thisSound;
-    self.refreshCoords(thisSound);
-    oData = thisSound._360data;
-    self.addClass(oData.oUIBox,'sm2_dragging');
-    oData.pauseCount = (self.lastTouchedSound.paused?1:0);
-    // self.lastSound.pause();
-    self.mmh(e?e:window.event);
-
-    if (isTouchDevice) {
-      self.removeEventHandler(document,'touchmove',self.mouseDown);
-      self.addEventHandler(document,'touchmove',self.mmh);
-      self.addEventHandler(document,'touchend',self.mouseUp);
-    } else {
-      // incredibly old-skool. TODO: Modernize.
-      document.onmousemove = self.mmh;
-      document.onmouseup = self.mouseUp;
-    }
-
-    self.stopEvent(e);
-    return false;
-
-  };
-
-  this.mouseUp = function(e) {
-
-    var oData = self.lastTouchedSound._360data;
-    self.removeClass(oData.oUIBox,'sm2_dragging');
-    if (oData.pauseCount === 0) {
-      self.lastTouchedSound.resume();
-    }
-    if (!isTouchDevice) {
-      document.onmousemove = null;
-      document.onmouseup = null;
-    } else {
-      self.removeEventHandler(document,'touchmove',self.mmh);
-      self.removeEventHandler(document,'touchend',self.mouseUP);
-    }
-
-  };
-
-  this.mmh = function(e) {
-
-    if (typeof e === 'undefined') {
-      e = window.event;
-    }
-    var oSound = self.lastTouchedSound,
-        coords = self.getMouseXY(e),
-        x = coords[0],
-        y = coords[1],
-        deltaX = x-oSound._360data.canvasMidXY[0],
-        deltaY = y-oSound._360data.canvasMidXY[1],
-        angle = Math.floor(fullCircle-(self.rad2deg(Math.atan2(deltaX,deltaY))+180));
-
-    oSound.setPosition(oSound.durationEstimate*(angle/fullCircle));
-    self.stopEvent(e);
-    return false;
-
-  };
-
-  // assignMouseDown();
-
   this.drawSolidArc = function(oCanvas, color, radius, width, radians, startAngle, noClear) {
 
     // thank you, http://www.snipersystems.co.nz/community/polarclock/tutorial.html
@@ -1081,11 +982,6 @@ function ThreeSixtyPlayer() {
         oCover = self.getElementsByClassName('sm2-cover','div',oLinks[i].parentNode)[0];
         oBtn = oLinks[i].parentNode.getElementsByTagName('span')[0];
         self.addEventHandler(oBtn,'click',self.buttonClick);
-        if (!isTouchDevice) {
-          self.addEventHandler(oCover,'mousedown',self.mouseDown);
-        } else {
-          self.addEventHandler(oCover,'touchstart',self.mouseDown);
-        }
         oCanvasCTX = oCanvas.getContext('2d');
         oCanvasCTX.translate(radius, radius);
         oCanvasCTX.rotate(self.deg2rad(-90)); // compensate for arc starting at EAST // http://stackoverflow.com/questions/319267/tutorial-for-html-canvass-arc-function
