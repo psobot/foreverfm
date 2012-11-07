@@ -1,5 +1,6 @@
 import sys
 import tsp
+import time
 import shlex
 import config
 import difflib
@@ -8,6 +9,7 @@ import traceback
 import soundcloud
 from timer import Timer
 from random import shuffle
+from requests import HTTPError
 from operator import itemgetter
 
 log = logging.getLogger(__name__)
@@ -130,13 +132,21 @@ def add_tracks():
 
         tracks = []
         last = []
+        wait = 2  # seconds
         while True:
             update_weights()
 
             log.info("Grabbing fresh tracklist from SoundCloud...")
             with Timer() as t:
-                tracks = client.get('/tracks', order='hotness', limit=200, offset=0)
-                tracks += client.get('/tracks', order='hotness', limit=200, offset=200)
+                while not tracks:
+                    try:
+                        tracks = client.get('/tracks', order='hotness', limit=200, offset=0)
+                        tracks += client.get('/tracks', order='hotness', limit=200, offset=200)
+                    except HTTPError as h:
+                        log.warning("Got %s from SoundCloud. Retrying in %2.2f seconds...",
+                                    h, wait)
+                        time.sleep(wait)
+
             log.info("Got %d tracks in %2.2fms.", len(tracks), t.ms)
 
             if last and not any([t.id == last[-1].id for t in tracks]):
@@ -156,6 +166,7 @@ def add_tracks():
                 yield track.obj
 
             last = tracks
+            tracks = []
     except:
         print traceback.format_exc()
         log.critical("%s", traceback.format_exc())
