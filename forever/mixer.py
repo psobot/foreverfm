@@ -118,12 +118,14 @@ class Mixer(multiprocessing.Process):
             self.tracks.append(self.analyze(track))
         except:
             log.error("Could not add track: \n%s", traceback.format_exc())
+            raise
 
     def add_tracks(self, tracks):
         try:
             self.tracks += order_tracks(self.analyze(tracks))
         except:
             log.error("Could not add tracks: \n%s", traceback.format_exc())
+            raise
 
     def process(self, track):
         if not hasattr(track.analysis.pyechonest_track, "title"):
