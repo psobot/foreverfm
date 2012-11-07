@@ -128,40 +128,37 @@ def add_tracks():
                 if track.title != "Bright Night":
                     yield track.obj
 
-        l = 1000
         tracks = []
         last = []
         while True:
             update_weights()
+
             log.info("Grabbing fresh tracklist from SoundCloud...")
             with Timer() as t:
-                tracks = cull(client.get('/tracks', order='hotness', limit=l, offset=0))
+                tracks = client.get('/tracks', order='hotness', limit=200, offset=0)
+                tracks += client.get('/tracks', order='hotness', limit=200, offset=200)
             log.info("Got %d tracks in %2.2fms.", len(tracks), t.ms)
+
+            if last and not any([t.id == last[-1].id for t in tracks]):
+                tracks.append(last[-1])
+            tracks = cull(tracks)
+
             log.info("Solving TSP on %d tracks...", len(tracks))
             with Timer() as t:
                 tracks = [tracks[i] for i in tsp.solve(tracks, distance, len(tracks) * config.tsp_mult)]
             log.info("Solved TSP in %2.2fms.", t.ms)
 
             if last:
-                i = 0
-                j = -1
-                while i == 0 and j < len(last):
-                    try:
-                        i = getIndexOfId(tracks, last[j].id) + 1
-                    except ValueError:
-                        j += 1
-                if i == 0:
-                    log.warning("Did not find ending track (or any similar) in new tracks.")
-                elif j > -1:
-                    log.warning("Did not find ending track in new tracks.")
+                i = getIndexOfId(tracks, last[-1].id) + 1
                 tracks = tracks[i:] + tracks[:i]
 
             for track in tracks:
                 yield track.obj
-            last = tracks
 
-    except Exception:
-        log.critical(traceback.format_exc())
+            last = tracks
+    except:
+        print traceback.format_exc()
+        log.critical("%s", traceback.format_exc())
 
 
 def pprint(track):
