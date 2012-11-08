@@ -94,7 +94,7 @@ class Frame
       </div>
       <div class='buttons'>
         #{if @id then "<a href='#' data-track='#{@nid}' class='like #{if (SC.favorites? and @nid in SC.favorites) then "" else ""}'>&nbsp;</a>
-                       <a href='#{@twitter()}' target='_blank' class='share'>&nbsp;</a>
+                       <a href='#' target='_blank' class='share'>&nbsp;</a>
                       " else ""}
         #{if @download then "<a href='#{@download}' class='download' data-track='#{@nid}'>&nbsp;</a>" else ""}
         #{if @url then "<a href='#{@url}' target='_blank' class='sc'>&nbsp;</a>" else ""}
@@ -325,7 +325,8 @@ $(document).ready ->
     e.preventDefault()
     [w, h] = [500, 250]
     [l, t] = [screen.width / 2 - (w / 2), screen.height / 2 - (h / 2)]
-    window.open(this.href, "Twitter", "toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=no, resizable=yes,copyhistory=no,height=#{h},width=#{w},top=#{t},left=#{l}")
+    link = w.__current_frame.twitter()
+    window.open(link, "Twitter", "toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=no, resizable=yes,copyhistory=no,height=#{h},width=#{w},top=#{t},left=#{l}")
     $(this).addClass('selected')
 
   $(document).on "click", 'a.download', (e) ->
