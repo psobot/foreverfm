@@ -249,9 +249,15 @@ class Waveform
       me.onNewFrame frame
     img.src = frame.waveform
 
-SC.initialize
-  client_id: "b08793cf5964f5571db86e3ca9e5378f"
-  redirect_uri: "http://beta.forever.fm/static/sc.html"
+if window.location.toString().search("beta.forever.fm")
+  SC.initialize
+    client_id: "cd8a7092051937ab1994fa3868edb911"
+    redirect_uri: "http://beta.forever.fm/static/sc.html"
+else
+  SC.initialize
+    client_id: "b08793cf5964f5571db86e3ca9e5378f"
+    redirect_uri: "http://forever.fm/static/sc.html"
+
 
 connectedly = (callback, authenticate) ->
   if SC.isConnected()
