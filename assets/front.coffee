@@ -249,7 +249,7 @@ class Waveform
       me.onNewFrame frame
     img.src = frame.waveform
 
-if window.location.toString().search("beta.forever.fm")
+if window.location.toString().search("beta.forever.fm") != -1
   SC.initialize
     client_id: "cd8a7092051937ab1994fa3868edb911"
     redirect_uri: "http://beta.forever.fm/static/sc.html"
