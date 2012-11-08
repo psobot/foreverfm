@@ -324,7 +324,7 @@ $(document).ready ->
   $(document).on "click", 'a.share', (e) ->
     e.preventDefault()
     [_w, _h] = [500, 250]
-    [l, t] = [screen.width / 2 - (w / 2), screen.height / 2 - (_h / 2)]
+    [l, t] = [screen.width / 2 - (_w / 2), screen.height / 2 - (_h / 2)]
     link = w.__current_frame.twitter()
     window.open(link, "Twitter", "toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=no, resizable=yes,copyhistory=no,height=#{_h},width=#{_w},top=#{t},left=#{l}")
     $(this).addClass('selected')
