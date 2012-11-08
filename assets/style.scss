@@ -134,14 +134,18 @@ body {
     bottom: 0;
     z-index: 5;
     
+    #logo {
+      height: 250px;
+      width: 250px;
+      margin: 23px auto 6px;
+      background: url(/static/img/logo.png) no-repeat top center;  // 246 px high
+    }
+
     h1 {
-      background: url(/static/img/logo.png) no-repeat top center;
-      
       text-align: center;
       font-weight: 300;
 
-      margin: 23px auto 0px;
-      padding-top: 279px;
+      margin: 0 auto 0px;
       font-size: 54px;
 
       text-transform: lowercase;
@@ -154,6 +158,25 @@ body {
       font-size: 35px;
       margin: -20px 0 0 0;
       text-transform: lowercase;
+    }
+
+    #social {
+      overflow: hidden;
+      margin: 0 auto;
+      width: 190px;
+      height: 23px;
+      iframe {
+        width: 107px;
+        height: 20px;
+        float: left;
+        display: inline;
+        text-align: center;
+      }
+      .fb-like {
+        margin: 0 auto;
+        text-align: center;
+        float: left;
+      }
     }
 
     #player {

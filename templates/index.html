@@ -3,7 +3,7 @@
 	<head>
 		<title>forever.fm</title>
 		<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
-        <meta name="description" content="Bork." />
+        <meta name="description" content="Your infinite DJ. A never-ending stream of the hottest songs on SoundCloud." />
 		
 		<meta name="og:title" content="forever.fm" />
 		<meta name="og:type" content="song" />
@@ -54,6 +54,38 @@
 	</head>
   <body>
     <div id="menu">
+      <div id="logo"></div>
+      <div id="social">
+          <a href="http://twitter.com/share" class="twitter-share-button"
+             data-count="horizontal" data-via="foreverdotfm">
+              Tweet
+          </a>
+          <script type="text/javascript">
+              (function(){
+                  var tw = document.createElement('script');
+                  tw.type = "text/javascript";
+                  tw.async = true;
+                  tw.src = "http://platform.twitter.com/widgets.js";
+                  var s = document.getElementsByTagName('script')[0];
+                  s.parentNode.insertBefore(tw, s);
+              })();
+            </script>
+            <div id="fb-root"></div>
+          <script>(function(d, s, id) {
+            var js, fjs = d.getElementsByTagName(s)[0];
+            if (d.getElementById(id)) return;
+            js = d.createElement(s); js.id = id;
+            js.src = "//connect.facebook.net/en_US/all.js#xfbml=1&appId=464728733570013";
+            fjs.parentNode.insertBefore(js, fjs);
+          }(document, 'script', 'facebook-jssdk'));</script>
+          <div class="fb-like"
+            data-href="http://forever.fm"
+            data-send="false"
+            data-layout="button_count"
+            data-width="450"
+            data-show-faces="false"
+            data-font="lucida grande"></div>
+      </div>
       <h1>
         Forever.FM
       </h1>
