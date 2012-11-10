@@ -7,10 +7,12 @@ import config
 import customlog
 import logging
 
+import os
 import sys
 import json
 import lame
 import time
+import info
 import restart
 import datetime
 import tornado.web
@@ -20,7 +22,6 @@ import tornadio2.server
 import multiprocessing
 import pyechonest.config
 
-import info
 from mixer import Mixer
 from daemon import Daemon
 from hotswap import Hotswap
@@ -46,6 +47,9 @@ templates.autoescape = None
 
 
 class MainHandler(tornado.web.RequestHandler):
+    mtime = 0
+    template = 'index.html'
+
     def get(self):
         debug = self.get_argument('__debug', None)
         if debug is None:
@@ -57,13 +61,11 @@ class MainHandler(tornado.web.RequestHandler):
             'compiled': compiled,
         }
         try:
-            if test:
-                s = open(template_dir + 'index.html').read()
-                content = tornado.template.Template(s).generate(**kwargs)
-            else:
-                content = templates.load('index.html').generate(**kwargs)
-
-            self.write(content)
+            if os.path.getmtime(template_dir + self.template) > self.mtime:
+                templates = tornado.template.Loader(template_dir)
+                templates.autoescape = None
+                self.mtme = time.time()
+            self.write(templates.load(self.template).generate(**kwargs))
         except Exception, e:
             log.error(e)
             tornado.web.RequestHandler.send_error(self, 500)
