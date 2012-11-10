@@ -31,6 +31,7 @@ from listeners import Listeners
 from assetcompiler import compiled
 from sockethandler import SocketHandler
 from bufferedqueue import BufferedReadQueue
+from monitor import MonitorHandler, MonitorSocket
 
 #   API Key setup
 pyechonest.config.ECHO_NEST_API_KEY = config.ECHO_NEST_API_KEY
@@ -43,8 +44,7 @@ frontend = 'frontend' in sys.argv
 stream = not frontend
 SECONDS_PER_FRAME = lame.SAMPLES_PER_FRAME / 44100.0
 
-template_dir = "templates/"
-templates = tornado.template.Loader(template_dir)
+templates = tornado.template.Loader(config.template_dir)
 templates.autoescape = None
 
 
@@ -63,7 +63,7 @@ class MainHandler(tornado.web.RequestHandler):
             'compiled': compiled,
         }
         try:
-            if os.path.getmtime(template_dir + self.template) > self.mtime:
+            if os.path.getmtime(config.template_dir + self.template) > self.mtime:
                 templates.reset()
                 self.mtime = time.time()
             self.write(templates.load(self.template).generate(**kwargs))
@@ -90,21 +90,6 @@ class InfoHandler(tornado.web.RequestHandler):
 
     def get(self):
         self.write(json.dumps(self.actions))
-
-
-class MonitorHandler(tornado.web.RequestHandler):
-    data = {}
-
-    @classmethod
-    def set(self, data):
-        self.data = data
-        #SocketHandler.on_monitor(data)
-
-    def get(self):
-        try:
-            self.write(json.dumps(self.data))
-        except:
-            traceback.print_exc()
 
 
 class StreamHandler(tornado.web.RequestHandler):
@@ -145,7 +130,17 @@ class StreamHandler(tornado.web.RequestHandler):
 
 
 class SocketConnection(tornadio2.conn.SocketConnection):
-    __endpoints__ = {"/info.websocket": SocketHandler}
+    __endpoints__ = {
+        "/info.websocket": SocketHandler,   #TODO: Rename
+        "/monitor.websocket": MonitorSocket
+    }
+
+
+def get_listeners():
+    try:
+        return sum([x.listeners for x in StreamHandler._StreamHandler__subclasses], [])
+    except:
+        traceback.print_exc()
 
 
 if __name__ == "__main__":
@@ -173,16 +168,10 @@ if __name__ == "__main__":
         import brain
         Hotswap(track_queue.put, brain).start()
     Hotswap(InfoHandler.add, info, 'generate', info_queue).start()
-
-    #   Monitor:
-    queues = dict(mp3_queue=v2_queue)
-
-    def get_listeners():
-        try:
-            return sum([x.listeners for x in StreamHandler._StreamHandler__subclasses], [])
-        except:
-            traceback.print_exc()
-    Hotswap(MonitorHandler.set, statistician, 'generate', get_listeners, **queues).start()
+    Hotswap(MonitorSocket.update,
+            statistician, 'generate',
+            get_listeners,
+            mp3_queue=v2_queue).start()
 
     tornado.ioloop.PeriodicCallback(
         lambda: restart.check('restart.txt',
@@ -202,7 +191,7 @@ if __name__ == "__main__":
             (r"/(favicon.ico)", tornado.web.StaticFileHandler, {"path": "static/img/"}),
             (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": "static/"}),
             (r"/all.json", InfoHandler),
-            (r"/monitor.json", MonitorHandler),
+            (r"/monitor", MonitorHandler),
             (r"/", MainHandler)
         ] + stream_routes),
         socket_io_port=config.socket_port,
