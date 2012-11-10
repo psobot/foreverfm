@@ -21,9 +21,9 @@ import multiprocessing
 import pyechonest.config
 
 import info
-import skull
 from mixer import Mixer
 from daemon import Daemon
+from hotswap import Hotswap
 from listeners import Listeners
 from assetcompiler import compiled
 from sockethandler import SocketHandler
@@ -152,9 +152,10 @@ if __name__ == "__main__":
     mixer.start()
 
     if stream:
-        skull.Brain(track_queue).start()
+        import brain
+        Hotswap(track_queue.put, brain).start()
 
-    info.Processor(info_queue, InfoHandler.add).start()
+    Hotswap(InfoHandler.add, info, 'generate', info_queue).start()
 
     tornado.ioloop.PeriodicCallback(
         lambda: restart.check('restart.txt',

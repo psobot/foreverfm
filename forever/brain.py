@@ -122,7 +122,7 @@ def cull(tracks):
     return tracks
 
 
-def add_tracks():
+def generate():
     try:
         while test:
             tracks = client.get('/tracks', q='sobot', license='cc-by', limit=4)
@@ -195,5 +195,5 @@ if __name__ == "__main__":
         ) for track in tracks], key=itemgetter(1)):
             print round(dist, 1), "\t", round(bpm, 1), "\t", round(l, 1), "\t", round(tag, 1), "\t", round(genre, 1), "\t", round(spread, 1), "\t", track.title, "\t", track.genre
     else:
-        for track in add_tracks():
+        for track in generate():
             pprint(track)
