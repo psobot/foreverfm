@@ -50,12 +50,12 @@ def generate_metadata(a, ctime):
         m1, m2 = m
         d['tracks'] = [{
             "metadata": m1,
-            "start": a.l1[0][0],
-            "end": sum(a.l1[-1])
+            "start": a.s1,
+            "end": a.e1
         }, {
             "metadata": m2,
-            "start": a.l2[0][0],
-            "end": sum(a.l2[-1])
+            "start": a.s2,
+            "end": a.e2
         }]
     else:
         d['tracks'] = [{

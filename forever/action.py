@@ -141,6 +141,8 @@ class Crossfade(object):
     for the given duration"""
     def __init__(self, tracks, starts, duration, mode='linear'):
         self.t1, self.t2 = [Edit(t, s, duration) for t, s in zip(tracks, starts)]
+        self.s1, self.s2 = starts[0:1]
+        self.e1, self.e2 = [s + self.t1.duration for s in starts[0:1]]
         self.duration = self.t1.duration
         self.mode = mode
 
@@ -194,6 +196,8 @@ class Blend(object):
     def __init__(self, tracks, lists):
         self.t1, self.t2 = tracks
         self.l1, self.l2 = lists
+        self.s1, self.s2 = self.l1[0][0], self.l2[0][0]
+        self.e1, self.e2 = sum(self.l1[-1]), sum(self.l2[-1])
         assert(len(self.l1) == len(self.l2))
 
         self.calculate_durations()
