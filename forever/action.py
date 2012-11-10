@@ -141,8 +141,8 @@ class Crossfade(object):
     for the given duration"""
     def __init__(self, tracks, starts, duration, mode='linear'):
         self.t1, self.t2 = [Edit(t, s, duration) for t, s in zip(tracks, starts)]
-        self.s1, self.s2 = starts[0:1]
-        self.e1, self.e2 = [s + self.t1.duration for s in starts[0:1]]
+        self.s1, self.s2 = starts
+        self.e1, self.e2 = [s + self.t1.duration for s in starts]
         self.duration = self.t1.duration
         self.mode = mode
 

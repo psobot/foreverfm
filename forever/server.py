@@ -15,7 +15,9 @@ import time
 import info
 import restart
 import datetime
+import traceback
 import tornado.web
+import statistician
 import tornado.ioloop
 import tornado.template
 import tornadio2.server
@@ -62,9 +64,8 @@ class MainHandler(tornado.web.RequestHandler):
         }
         try:
             if os.path.getmtime(template_dir + self.template) > self.mtime:
-                templates = tornado.template.Loader(template_dir)
-                templates.autoescape = None
-                self.mtme = time.time()
+                templates.reset()
+                self.mtime = time.time()
             self.write(templates.load(self.template).generate(**kwargs))
         except Exception, e:
             log.error(e)
@@ -89,6 +90,21 @@ class InfoHandler(tornado.web.RequestHandler):
 
     def get(self):
         self.write(json.dumps(self.actions))
+
+
+class MonitorHandler(tornado.web.RequestHandler):
+    data = {}
+
+    @classmethod
+    def set(self, data):
+        self.data = data
+        #SocketHandler.on_monitor(data)
+
+    def get(self):
+        try:
+            self.write(json.dumps(self.data))
+        except:
+            traceback.print_exc()
 
 
 class StreamHandler(tornado.web.RequestHandler):
@@ -156,8 +172,17 @@ if __name__ == "__main__":
     if stream:
         import brain
         Hotswap(track_queue.put, brain).start()
-
     Hotswap(InfoHandler.add, info, 'generate', info_queue).start()
+
+    #   Monitor:
+    queues = dict(mp3_queue=v2_queue)
+
+    def get_listeners():
+        try:
+            return sum([x.listeners for x in StreamHandler._StreamHandler__subclasses], [])
+        except:
+            traceback.print_exc()
+    Hotswap(MonitorHandler.set, statistician, 'generate', get_listeners, **queues).start()
 
     tornado.ioloop.PeriodicCallback(
         lambda: restart.check('restart.txt',
@@ -177,6 +202,7 @@ if __name__ == "__main__":
             (r"/(favicon.ico)", tornado.web.StaticFileHandler, {"path": "static/img/"}),
             (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": "static/"}),
             (r"/all.json", InfoHandler),
+            (r"/monitor.json", MonitorHandler),
             (r"/", MainHandler)
         ] + stream_routes),
         socket_io_port=config.socket_port,
