@@ -143,7 +143,7 @@ def get_listeners():
     try:
         return sum([x.listeners for x in StreamHandler._StreamHandler__subclasses], [])
     except:
-        traceback.print_exc()
+        log.error("Could not get listeners:\n%s", traceback.format_exc())
 
 
 if __name__ == "__main__":
