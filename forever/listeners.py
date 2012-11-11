@@ -54,6 +54,10 @@ class Listeners(list):
     def __broadcast(self):
         self.__packet = self.queue.get_nowait()
         self.__starving = False
-        for listener in self:
-            listener.write(self.__packet)
-            listener.flush()
+        #   TODO: Find out when the connection is actually closed.
+        for i, listener in enumerate(list(self)):
+            if listener.request.connection.stream.closed():
+                del self[i]
+            else:
+                listener.write(self.__packet)
+                listener.flush()
