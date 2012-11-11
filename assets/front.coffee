@@ -297,7 +297,6 @@ $(document).ready ->
     w.draw()
 
   $.getJSON "all.json", (segments) ->
-    window.spinner.stop()
     for segment in segments
       w.process segment
 
