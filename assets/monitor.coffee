@@ -47,7 +47,6 @@ class Queue
          .attr("y2", @h - .5).style "stroke", "#000"
 
   update: (raw) ->
-    console.log raw
     @data.shift()
     @data.push(@next(raw))
     @max(raw)
