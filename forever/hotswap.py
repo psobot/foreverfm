@@ -31,5 +31,4 @@ class Hotswap(threading.Thread):
             self.handle(self.gen.next())
 
     def handle(self, elem):
-        log.info("Adding new element to queue.")
         self.out(elem)
