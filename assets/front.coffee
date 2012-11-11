@@ -278,6 +278,8 @@ getFavorites = (callback) ->
     callback SC.favorites
 
 $(document).ready ->
+  # Fast hack - wait until the FB button has loaded to prevent style bugs
+  setTimeout(( -> $("#share").css("overflow", "visible")), 2000)
   w = new Waveform document.getElementById "waveform"
   
   connectedly (favorites) ->
