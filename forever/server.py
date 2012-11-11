@@ -103,7 +103,10 @@ class StreamHandler(tornado.web.RequestHandler):
     @classmethod
     def stream_frames(cls):
         for klass in cls.__subclasses:
-            klass.listeners.broadcast()
+            try:
+                klass.listeners.broadcast()
+            except:
+                log.error("Could not broadcast due to: \n%s", traceback.format_exc())
 
     @classmethod
     def init_streams(cls, streams):

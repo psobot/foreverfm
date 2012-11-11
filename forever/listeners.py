@@ -3,7 +3,6 @@ import lame
 import config
 import Queue
 import logging
-import traceback
 
 LAG_LIMIT = config.lag_limit
 log = logging.getLogger(config.log_name)
@@ -56,12 +55,9 @@ class Listeners(list):
         self.__packet = self.queue.get_nowait()
         self.__starving = False
         #   TODO: Find out when the connection is actually closed.
-        try:
-            for i, listener in enumerate(list(self)):
-                if listener.request.connection.stream.closed():
-                    del self[i]
-                else:
-                    listener.write(self.__packet)
-                    listener.flush()
-        except:
-            log.error(traceback.format_exc())
+        for i, listener in enumerate(list(self)):
+            if listener.request.connection.stream.closed():
+                del self[i]
+            else:
+                listener.write(self.__packet)
+                listener.flush()
