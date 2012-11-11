@@ -6,4 +6,43 @@ body {
       display: block;
     }
   }
+  .queues {
+    .chart {
+      position: relative;
+      width: 300px;
+      height: 24px;
+      overflow: hidden;
+      .name {
+        width: 92px;
+        padding: 4px;
+        position: relative;
+      }
+      border: 1px solid #000;
+      .bar {
+        position: absolute;
+        top: 0;
+        left: 100px;
+        width: 0;
+        height: 20px;
+        background-image: linear-gradient(left , rgb(247,0,0) 0px, rgb(255,255,0) 32%, rgb(0,255,17) 200px);
+        background-image: -o-linear-gradient(left , rgb(247,0,0) 0px, rgb(255,255,0) 32%, rgb(0,255,17) 200px);
+        background-image: -moz-linear-gradient(left , rgb(247,0,0) 0px, rgb(255,255,0) 32%, rgb(0,255,17) 200px);
+        background-image: -webkit-linear-gradient(left , rgb(247,0,0) 0px, rgb(255,255,0) 32%, rgb(0,255,17) 200px);
+        background-image: -ms-linear-gradient(left , rgb(247,0,0) 0px, rgb(255,255,0) 32%, rgb(0,255,17) 200px);
+
+        background-image: -webkit-gradient(
+            linear,
+            left top,
+            right top,
+            color-stop(0, rgb(247,0,0)),
+            color-stop(0.32, rgb(255,255,0)),
+            color-stop(1, rgb(0,255,17))
+        );
+        background-position: left middle;
+        -webkit-background-size: 200px;
+        padding: 4px 0 0 5px;
+        color: white;
+      }
+    }
+  }
 }
