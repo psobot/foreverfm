@@ -21,6 +21,7 @@ class Queue
       """
     @id = "chart_#{@name}"
     @bar =  $("##{@id} .bar")
+    @_name =  $("##{@id} .name")
     @update(@initdata) if @initdata?
 
   update: (raw) ->
@@ -30,6 +31,7 @@ class Queue
   redraw: ->
     @bar.width(((parseInt(@data) / 9187) * 200) + "px")
     @bar.html(@data)
+    @_name.toggleClass('active')
 
 $(document).ready ->
   s = io.connect ":8193/monitor.websocket"

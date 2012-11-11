@@ -16,6 +16,9 @@ body {
         width: 92px;
         padding: 4px;
         position: relative;
+        &.active {
+          background: #dedede;
+        }
       }
       border: 1px solid #000;
       .bar {
