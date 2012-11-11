@@ -246,6 +246,9 @@ class Waveform
     me = this
     img.onload = ->
       frame.image = this
+      if window.__spinning
+        window.__spinner.stop()
+        window.__spinning = false
       me.onNewFrame frame
     img.src = frame.waveform
 
@@ -278,6 +281,9 @@ getFavorites = (callback) ->
     callback SC.favorites
 
 $(document).ready ->
+  window.__spinner.spin document.getElementById('content')
+  window.__spinning = true
+
   # Fast hack - wait until the FB button has loaded to prevent style bugs
   setTimeout(( -> $("#share").css("overflow", "visible")), 2000)
   w = new Waveform document.getElementById "waveform"
@@ -291,6 +297,7 @@ $(document).ready ->
     w.draw()
 
   $.getJSON "all.json", (segments) ->
+    window.spinner.stop()
     for segment in segments
       w.process segment
 
