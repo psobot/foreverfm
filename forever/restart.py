@@ -17,7 +17,7 @@ def check(f, t, l):
         if os.stat(f).st_mtime > t:
             if l:
                 log.warning(
-                    "Pending restart, waiting for %d listeners to exit.", len(l)
+                    "Pending restart, waiting for %d listeners to exit.", l
                 )
             else:
                 log.fatal("Restarting server...")

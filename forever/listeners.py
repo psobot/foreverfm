@@ -1,8 +1,9 @@
 import time
 import lame
-import config
 import Queue
+import config
 import logging
+import traceback
 
 LAG_LIMIT = config.lag_limit
 log = logging.getLogger(config.log_name)
@@ -38,7 +39,7 @@ class Listeners(list):
                 log.info("Sending first frame for %s.", self.__name)
             self.__last_send = time.time()
 
-            if self.__lag > 0:   # TODO: Doesn't this make this "leading?"
+            if self.__lag > 0:
                 log.warning("Queue %s lag detected. (%2.2f ms)",
                             self.__name, self.__lag * 1000)
                 while self.__lag > 0 and not self.queue.empty():
@@ -54,10 +55,14 @@ class Listeners(list):
     def __broadcast(self):
         self.__packet = self.queue.get_nowait()
         self.__starving = False
-        #   TODO: Find out when the connection is actually closed.
         for i, listener in enumerate(list(self)):
             if listener.request.connection.stream.closed():
-                del self[i]
+                try:
+                    listener.finish()
+                    del self[self.index(listener)]
+                except:
+                    log.error("Could not finish and del listener:\n%s",
+                              traceback.format_exc())
             else:
                 listener.write(self.__packet)
                 listener.flush()
