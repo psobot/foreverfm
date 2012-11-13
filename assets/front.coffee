@@ -217,6 +217,9 @@ class Waveform
         right += frame.image.width - @overlap
       @setPlayerColor()
 
+  title: ->
+    if @__current_frame? then @__current_frame.title else "Buffering..."
+
   __dec2hex: (i) ->
    (i+0x100).toString(16).substr(-2)
 
@@ -280,9 +283,52 @@ getFavorites = (callback) ->
     SC.favorites = (track.id for track in favoriteds)
     callback SC.favorites
 
+class Titular
+  char: ">"#"▶"
+  constructor: ->
+    @title = document.title
+    @__title = ""
+    @rotation = 0
+    @drawloop()
+
+  drawloop: ->
+    @draw()
+    me = this
+    return if @stop?
+    setTimeout((-> me.drawloop()), 400)
+
+  draw: (playing) ->
+    if not playing?
+      s = window.soundManager.sounds.ui360Sound0
+      playing = (s? and s.playState == 1 and not s.paused)
+    if playing
+      document.title = @char + " " + @rot(window._waveform.title())
+    else
+      document.title = @title
+
+  rot: (title) ->
+    if title != @__title
+      @rotation = 0
+      @__title = title
+    if @rotation == @__title.length
+      @rotation = 0
+    r = @__title[@rotation...@__title.length] + " " + @__title[0...@rotation]
+    @rotation += 1
+    r
+
+
 $(document).ready ->
   window.__spinner.spin document.getElementById('content')
   window.__spinning = true
+  window.__titular = new Titular
+
+  $('body').keyup (e) ->
+    s = window.soundManager.sounds.ui360Sound0
+    if e.keyCode == 32
+      if s?
+        s.togglePause()
+      else
+        window.threeSixtyPlayer.handleClick {target: $('a.sm2_link')[0]}
 
   # Fast hack - wait until the FB button has loaded to prevent style bugs
   setTimeout(( -> $("#share").css("overflow", "visible")), 2000)
