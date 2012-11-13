@@ -59,9 +59,8 @@ class Listeners(list):
             if listener.request.connection.stream.closed():
                 try:
                     listener.finish()
-                    del self[self.index(listener)]
                 except:
-                    log.error("Could not finish and del listener:\n%s",
+                    log.error("Could not finish listener:\n%s",
                               traceback.format_exc())
             else:
                 listener.write(self.__packet)
