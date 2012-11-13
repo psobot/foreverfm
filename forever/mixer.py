@@ -20,6 +20,7 @@ import threading
 import soundcloud
 import multiprocessing
 from lame import Lame
+from database import Database, merge
 
 client = soundcloud.Client(client_id=config.SOUNDCLOUD_CLIENT_KEY)
 
@@ -31,7 +32,7 @@ test = 'test' in sys.argv
 
 def metadata_of(a):
     if hasattr(a, '_metadata'):
-        return a._metadata
+        return a._metadata.obj
     if hasattr(a, 'track'):
         return metadata_of(a.track)
     if hasattr(a, 't1') and hasattr(a, 't2'):
@@ -114,14 +115,14 @@ class Mixer(multiprocessing.Process):
         return self.tracks[0]
 
     def get_stream(self, x):
-        fname = os.path.abspath("cache/%d.mp3" % x['id'])
+        fname = os.path.abspath("cache/%d.mp3" % x.id)
         if os.path.isfile(fname):
             return fname
         else:
-            if x['downloadable'] and x['original_format'] == "mp3":
-                url = x['download_url']
+            if x.downloadable and x.original_format == "mp3":
+                url = x.download_url
             else:
-                url = x['stream_url']
+                url = x.stream_url
             url += "?client_id=" + config.SOUNDCLOUD_CLIENT_KEY
 
             try:
@@ -143,9 +144,10 @@ class Mixer(multiprocessing.Process):
         if isinstance(x, tuple):
             return self.analyze(*x)
 
-        log.info("Grabbing stream of SC# %d", x['id'])
+        log.info("Grabbing stream of SC# %d", x.id)
         laf = LocalAudioStream(self.get_stream(x))
         setattr(laf, "_metadata", x)
+        Database().ensure(merge(x, laf.analysis))
         return self.process(laf)
 
     def add_track(self, track):
@@ -156,8 +158,8 @@ class Mixer(multiprocessing.Process):
 
     def process(self, track):
         if not hasattr(track.analysis.pyechonest_track, "title"):
-            setattr(track.analysis.pyechonest_track, "title", track._metadata.get('title', "<unknown>"))
-        log.info("Resampling features for %d (%s)", track._metadata.get('id', -1),
+            setattr(track.analysis.pyechonest_track, "title", track._metadata.title)
+        log.info("Resampling features for %d (%s)", track._metadata.id,
                                                     track.analysis.pyechonest_track)
         track.resampled = resample_features(track, rate='beats')
         track.resampled['matrix'] = timbre_whiten(track.resampled['matrix'])
