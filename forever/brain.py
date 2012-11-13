@@ -44,6 +44,9 @@ class Criteria(object):
     def precompute(self, track):
         pass
 
+    def postcompute(self, track):
+        pass
+
     def update_weight(self):
         try:
             self.WEIGHT = getattr(config,
@@ -62,6 +65,9 @@ class Tag(Criteria):
             track.obj['_tags'] = set(shlex.split(track.tag_list))
         except ValueError:
             track.obj['_tags'] = set()
+
+    def postcompute(self, track):
+        del track.obj['_tags']
 
     def diff(self, a, b):
         """
@@ -175,6 +181,7 @@ def generate():
         tracks = []
         last = []
         wait = 2  # seconds
+        d = Database()
         while True:
             log.info("Grabbing fresh tracklist from SoundCloud...")
             with Timer() as t:
@@ -193,10 +200,19 @@ def generate():
                 tracks.append(last[-1])
             tracks = cull(tracks)
 
+            try:
+                tracks = [d.merge(t) for t in tracks]
+            except:
+                log.warning("Could not merge tracks with DB due to:\n%s", traceback.format_exc())
+
             log.info("Solving TSP on %d tracks...", len(tracks))
             with Timer() as t:
                 tracks = [tracks[i] for i in tsp.solve(tracks, distance, len(tracks) * config.tsp_mult)]
             log.info("Solved TSP in %2.2fms.", t.ms)
+
+            for track in tracks:
+                for criterion in criteria:
+                    criterion.postcompute(track)
 
             if last:
                 i = getIndexOfId(tracks, last[-1].id) + 1

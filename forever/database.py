@@ -71,8 +71,8 @@ class Database(object):
 
     def __find(self, sc):
         with cursor(self.db) as c:
-            row = c.execute("SELECT * FROM tracks WHERE id = %s",
-                            [sc.id]).fetchone()
+            c.execute("SELECT * FROM tracks WHERE id = %s", [sc.id])
+            row = c.fetchone()
             if row:
                 return Track(*row)
             else:
@@ -108,13 +108,14 @@ class Database(object):
 
     def is_duplicate(self, t):
         with cursor(self.db) as c:
-            r = c.execute("""
+            c.execute("""
                 SELECT COUNT(*)
                 FROM tracks t1
                 LEFT JOIN tracks t2 ON (t1.fingerprint = t2.fingerprint
                                         OR t2.md5 = t2.md5) AND t1.id != t2.id
                 WHERE t1.id = %s
-            """, [t.id]).fetchone()
+            """, [t.id])
+            r = c.fetchone()
             if r is None:
                 return None
             else:
