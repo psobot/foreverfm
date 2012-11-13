@@ -130,14 +130,13 @@ class DeduplicatedTrack(soundcloud.resource.Resource):
         self.obj = o.obj
 
     def __eq__(self, other):
+        if self.title.lower() == other.title.lower():
+            return True
         return hash(self) == hash(other)
 
     def __hash__(self):
-        if 'fingerprint' in self.obj:
-            return hash(self.fingerprint)
-        if 'md5' in self.obj:
-            return hash(self.md5)
-        return hash(self.title.lower())
+        #   TODO: This is kind of a hack
+        return hash(self.duration)
 
 
 def distance(a, b):
