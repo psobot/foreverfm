@@ -1,0 +1,45 @@
+app_name: "Forever.fm"
+
+log_file: 'log.txt'
+log_name: "web"
+log_format: '%(asctime)s P%(process)-5d (%(levelname)8s) %(module)16s%(lineno)5d: %(uid)9s %(message)s'
+log_config_file_changes: False
+
+db_host: localhost
+db_user: root
+db_pass: ""
+
+lag_limit: 2            #   seconds - how much we can lag by before dropping frames.
+restart_timeout: 3      #   seconds between polls to restart.txt
+http_port: 8192
+socket_port: 8193
+frontend_buffer: 240    #   seconds of audio to buffer in frontend
+past_played_buffer: 600 #   seconds of audio to store track metadata for in the past
+monitor_update_time: 0.5
+template_dir: templates/
+
+
+tsp_mult: 100    #   num_tracks * tsp_mult = num_iterations
+
+#   Weightings for graph solving
+tempo_weight: 999
+tag_weight: 20
+length_weight: 5
+genre_weight: 40
+spread_weight: 999
+danceability_weight: 100
+energy_weight: 300
+loudness_weight: 50
+
+max_track_length: 400
+min_track_length: 90
+
+#   Default values when nothing exists
+no_bpm_diff: 20
+
+blacklist:
+  user: 
+    - smilesxoxo2
+  tag:
+    - sample pack
+    - loops
