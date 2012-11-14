@@ -348,6 +348,8 @@ $(document).ready ->
 
   s = io.connect ":8193/info.websocket"
   s.on 'message', (segment) ->
+    if typeof segment is "string"
+      segment = JSON.parse(segment)
     w.process segment, true
 
   $(document).on "click", 'a.like', (e) ->
