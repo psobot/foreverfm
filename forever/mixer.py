@@ -1,5 +1,5 @@
 """
-Originally created by Tristan Jehan and Jason Sundram.
+Based off of `capsule`, by Tristan Jehan and Jason Sundram.
 Heavily modified by Peter Sobot for integration with forever.fm.
 """
 
@@ -17,12 +17,9 @@ import logging
 import urllib2
 import traceback
 import threading
-import soundcloud
 import multiprocessing
 from lame import Lame
 from database import Database, merge
-
-client = soundcloud.Client(client_id=config.SOUNDCLOUD_CLIENT_KEY)
 
 log = logging.getLogger(__name__)
 
@@ -144,7 +141,7 @@ class Mixer(multiprocessing.Process):
         if isinstance(x, tuple):
             return self.analyze(*x)
 
-        log.info("Grabbing stream of SC# %d", x.id)
+        log.info("Grabbing stream...", uid=x.id)
         laf = LocalAudioStream(self.get_stream(x))
         setattr(laf, "_metadata", x)
         Database().ensure(merge(x, laf.analysis))
@@ -159,8 +156,7 @@ class Mixer(multiprocessing.Process):
     def process(self, track):
         if not hasattr(track.analysis.pyechonest_track, "title"):
             setattr(track.analysis.pyechonest_track, "title", track._metadata.title)
-        log.info("Resampling features for %d (%s)", track._metadata.id,
-                                                    track.analysis.pyechonest_track)
+        log.info("Resampling features...", uid=track._metadata.id)
         track.resampled = resample_features(track, rate='beats')
         track.resampled['matrix'] = timbre_whiten(track.resampled['matrix'])
 
@@ -168,9 +164,7 @@ class Mixer(multiprocessing.Process):
             raise ValueError("Track too short!")
 
         track.gain = self.__db_2_volume(track.analysis.loudness)
-
-        # for compatibility, we make mono tracks stereo
-        log.info("Done processing %s", track.analysis.pyechonest_track)
+        log.info("Done processing.", uid=track._metadata.id)
         return track
 
     def __db_2_volume(self, loudness):
@@ -240,24 +234,27 @@ class Mixer(multiprocessing.Process):
                                   traceback.format_exc())
                 log.info("Rendered in %fs!", time.time() - _a)
                 _a = time.time()
-                log.info("Assembling audio data...")
-                out = assemble(ADs, numChannels=2, sampleRate=self.samplerate)
-                log.info("Assembled in %fs!", time.time() - _a)
+                if ADs:
+                    log.info("Assembling audio data...")
+                    out = assemble(ADs, numChannels=2, sampleRate=self.samplerate)
+                    log.info("Assembled in %fs!", time.time() - _a)
+                else:
+                    out = None
 
                 del ADs
                 gc.collect()
                 try:
                     if not ctime:
                         ctime = time.time()
-                    for a in actions:
-                        self.infoqueue.put(generate_metadata(a, ctime))
-                        ctime += a.duration
-                    for encoder in self.encoders:
-                        encoder.add_pcm(out.data)
+                    if out:
+                        for a in actions:
+                            self.infoqueue.put(generate_metadata(a, ctime))
+                            ctime += a.duration
+                        for encoder in self.encoders:
+                            encoder.add_pcm(out.data)
                 except:
                     log.error("Could not generate info or encode:\n%s",
                               traceback.format_exc())
-                del out.data
                 del out
                 gc.collect()
         except:

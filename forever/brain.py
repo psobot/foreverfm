@@ -15,6 +15,11 @@ log = logging.getLogger(__name__)
 test = 'test' in sys.argv
 client = soundcloud.Client(client_id=config.SOUNDCLOUD_CLIENT_KEY)
 
+#   Turn off the excessive "Starting new HTTPS connection (1): i1.sndcdn.com"
+#   logs that happen before every single request:
+soundcloud.request.requests.packages.\
+        urllib3.connectionpool.log.setLevel(logging.CRITICAL)
+
 
 def getIndexOfId(l, value):
     for pos, t in enumerate(l):

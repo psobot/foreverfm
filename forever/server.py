@@ -52,7 +52,7 @@ class MainHandler(tornado.web.RequestHandler):
     mtime = 0
     template = 'index.html'
 
-    def get(self):
+    def __gen(self):
         debug = self.get_argument('__debug', None)
         if debug is None:
             debug = self.request.host.startswith("localhost")
@@ -66,10 +66,18 @@ class MainHandler(tornado.web.RequestHandler):
             if os.path.getmtime(config.template_dir + self.template) > self.mtime:
                 templates.reset()
                 self.mtime = time.time()
-            self.write(templates.load(self.template).generate(**kwargs))
+            return templates.load(self.template).generate(**kwargs)
         except Exception, e:
             log.error(e)
             tornado.web.RequestHandler.send_error(self, 500)
+            return
+
+    def head(self):
+        self.__gen()
+        self.finish()
+
+    def get(self):
+        self.finish(self.__gen())
 
 
 class InfoHandler(tornado.web.RequestHandler):
@@ -92,8 +100,9 @@ class InfoHandler(tornado.web.RequestHandler):
             log.error("Error while cleaning up:\n%s", traceback.format_exc())
 
     def get(self):
+        self.set_header("Content-Type", "application/json")
         try:
-            self.write(json.dumps(self.actions))
+            self.write(json.dumps(self.actions, ensure_ascii=False).encode('utf-8'))
         except:
             log.error("Could not send info burst:\n%s", traceback.format_exc())
             self.write(json.dumps([]))

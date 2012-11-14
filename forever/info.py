@@ -18,8 +18,8 @@ def generate(iq):
             s2 = action['tracks'][1]['start']
             e2 = action['tracks'][1]['end']
 
-            log.info("Processing metadata for %s -> %s, (%2.2fs %2.2fs) -> (%2.2fs, %2.2fs).",
-                        m1.title, m2.title, s1, s2, e1, e2)
+            log.info("Processing metadata for %d -> %d, (%2.2fs %2.2fs) -> (%2.2fs, %2.2fs).",
+                        m1.id, m2.id, s1, s2, e1, e2, uid=m1.id)
 
             a = scwaveform.generate([s1, s2], [e1, e2],
                                     [m1.color, m2.color],
@@ -32,8 +32,8 @@ def generate(iq):
                 start = track['start']
                 end = track['end']
 
-                log.info("Processing metadata for %s, %2.2fs -> %2.2fs.",
-                            metadata.title, start, end)
+                log.info("Processing metadata, %2.2fs -> %2.2fs.",
+                            start, end, uid=metadata.id)
                 a = scwaveform.generate(start, end, metadata.color,
                                         metadata.waveform_url,
                                         metadata.duration,
@@ -41,4 +41,5 @@ def generate(iq):
         action['waveform'] = "data:image/png;base64,%s" % \
                             base64.encodestring(a)
         action['width'] = int(action['duration'] * scwaveform.DEFAULT_SPEED)
+        action['unicode'] = u"\x96\x54"
         yield action

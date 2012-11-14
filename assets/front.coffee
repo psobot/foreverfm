@@ -237,11 +237,11 @@ class Waveform
     frame.render()
     
   onCurrentFrameChange: (old, knew) ->
-    if knew.action == "Crossmatch" or knew.action == "Crossfade"
+    if knew.action == "Crossmatch" or knew.action == "Crossfade" or (old? and (old.action == "Playback" and knew.action == "Playback"))
       setTimeout ->
         knew.render()
         old.render() if old?
-      , (knew.duration * 500)
+      , (if knew.action == "Crossmatch" then knew.duration * 500 else 10)
     
   process: (f, from_socket) ->
     frame = new Frame f, from_socket
