@@ -5,3 +5,5 @@ log.txt*
 *.pyc
 static/assets/*
 static/waveforms/*.png
+api_keys.yml
+apikeys.yml

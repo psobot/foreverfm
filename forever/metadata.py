@@ -1,7 +1,7 @@
 import colors
-import config
-import cStringIO
+import apikeys
 import logging
+import cStringIO
 import traceback
 import soundcloud
 
@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 
 
 class Metadata(object):
-    client = soundcloud.Client(client_id=config.SOUNDCLOUD_CLIENT_KEY)
+    client = soundcloud.Client(client_id=apikeys.SOUNDCLOUD_CLIENT_KEY)
     __color = None
 
     def __init__(self, obj):

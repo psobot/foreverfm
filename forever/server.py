@@ -4,6 +4,7 @@ by @psobot, Nov 3 2012
 """
 
 import config
+import apikeys
 import customlog
 import logging
 
@@ -34,7 +35,7 @@ from bufferedqueue import BufferedReadQueue
 from monitor import MonitorHandler, MonitorSocket
 
 #   API Key setup
-pyechonest.config.ECHO_NEST_API_KEY = config.ECHO_NEST_API_KEY
+pyechonest.config.ECHO_NEST_API_KEY = apikeys.ECHO_NEST_API_KEY
 
 started_at_timestamp = time.time()
 started_at = datetime.datetime.utcnow()

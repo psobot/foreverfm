@@ -3,6 +3,7 @@ import tsp
 import time
 import shlex
 import config
+import apikeys
 import difflib
 import logging
 import traceback
@@ -13,7 +14,7 @@ from database import Database
 
 log = logging.getLogger(__name__)
 test = 'test' in sys.argv
-client = soundcloud.Client(client_id=config.SOUNDCLOUD_CLIENT_KEY)
+client = soundcloud.Client(client_id=apikeys.SOUNDCLOUD_CLIENT_KEY)
 
 #   Turn off the excessive "Starting new HTTPS connection (1): i1.sndcdn.com"
 #   logs that happen before every single request:
