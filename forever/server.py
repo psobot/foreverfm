@@ -130,12 +130,14 @@ class StreamHandler(tornado.web.RequestHandler):
 
     @tornado.web.asynchronous
     def get(self):
-        log.info("Added new listener at %s", self.request.remote_ip)
+        ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
+        log.info("Added new listener at %s", ip)
         self.set_header("Content-Type", "audio/mpeg")
         self.listeners.append(self)
 
     def on_finish(self):
-        log.info("Removed listener at %s", self.request.remote_ip)
+        ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
+        log.info("Removed listener at %s", ip)
         self.listeners.remove(self)
 
 
