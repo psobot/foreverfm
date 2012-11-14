@@ -83,13 +83,20 @@ class InfoHandler(tornado.web.RequestHandler):
 
     @classmethod
     def clean(cls):
-        now = time.time()
-        while cls.actions and cls.actions[0]['time'] \
-                     + cls.actions[0]['duration'] + config.past_played_buffer < now:
-            cls.actions.pop(0)
+        try:
+            now = time.time()
+            while cls.actions and cls.actions[0]['time'] \
+               + cls.actions[0]['duration'] + config.past_played_buffer < now:
+                cls.actions.pop(0)
+        except:
+            log.error("Error while cleaning up:\n%s", traceback.format_exc())
 
     def get(self):
-        self.write(json.dumps(self.actions))
+        try:
+            self.write(json.dumps(self.actions))
+        except:
+            log.error("Could not send info burst:\n%s", traceback.format_exc())
+            self.write(json.dumps([]))
 
 
 class StreamHandler(tornado.web.RequestHandler):
