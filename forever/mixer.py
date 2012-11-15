@@ -12,7 +12,7 @@ from capsule_support import order_tracks, resample_features, \
 import os
 import gc
 import time
-import config
+import apikeys
 import logging
 import urllib2
 import traceback
@@ -120,7 +120,7 @@ class Mixer(multiprocessing.Process):
                 url = x.download_url
             else:
                 url = x.stream_url
-            url += "?client_id=" + config.SOUNDCLOUD_CLIENT_KEY
+            url += "?client_id=" + apikeys.SOUNDCLOUD_CLIENT_KEY
 
             try:
                 conn = urllib2.urlopen(url)

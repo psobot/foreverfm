@@ -177,16 +177,13 @@ def cull(tracks):
 
 def generate():
     try:
-        while test:
-            tracks = client.get('/tracks', q='sobot', license='cc-by', limit=4)
-            for track in tracks:
-                if track.title != "Bright Night":
-                    yield track
-
         tracks = []
         last = []
         wait = 2  # seconds
         d = Database()
+        while test:
+            yield d.merge(client.get('/tracks/67106027'))
+
         while True:
             log.info("Grabbing fresh tracklist from SoundCloud...")
             with Timer() as t:

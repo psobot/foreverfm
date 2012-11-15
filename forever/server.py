@@ -106,6 +106,7 @@ class InfoHandler(tornado.web.RequestHandler):
             self.write(json.dumps(self.actions, ensure_ascii=False).encode('utf-8'))
         except:
             log.error("Could not send info burst:\n%s", traceback.format_exc())
+            log.error("Data:\n%s", self.actions)
             self.write(json.dumps([]))
 
 
