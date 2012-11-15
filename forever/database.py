@@ -8,7 +8,7 @@ class cursor():
         self.db = db
 
     def __enter__(self):
-        self.conn = MySQLdb.connect(config.db_host, config.db_user, config.db_pass, self.db)
+        self.conn = MySQLdb.connect(config.db_host, config.db_user, config.db_pass, self.db, use_unicode=True)
         self.cur = self.conn.cursor()
         return self.cur
 
