@@ -48,9 +48,12 @@ class Frame
     if matches?
       [_, @title, _, other] = matches
     
-    #   Remove "Free Download," "Follow Me" and the like
-    @title = @title.replace MAGIC_REGEX, ""
-    @artist = @artist.replace MAGIC_REGEX, ""
+    #   Try to remove "Free Download," "Follow Me" and the like
+    _title = @title.replace MAGIC_REGEX, ""
+    @title = _title if _title.length > 0
+
+    _artist = @artist.replace MAGIC_REGEX, ""
+    @artist = _artist if _artist.length > 0
 
     if @title[0] == '"' and @title[@title.length - 1] == '"'
       @title = @title[1...@title.length - 1].trim()
