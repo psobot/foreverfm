@@ -14,6 +14,7 @@ import json
 import lame
 import time
 import info
+import random
 import restart
 import datetime
 import traceback
@@ -143,8 +144,11 @@ class StreamHandler(tornado.web.RequestHandler):
     def get(self):
         ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
         log.info("Added new listener at %s", ip)
-        self.set_header("Content-Type", "audio/mpeg")
-        self.listeners.append(self)
+        if len(self.listeners) > config.relay_limit:
+            self.redirect(random.choice(config.relays))
+        else:
+            self.set_header("Content-Type", "audio/mpeg")
+            self.listeners.append(self)
 
     def on_finish(self):
         ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)

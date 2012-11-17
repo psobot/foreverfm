@@ -325,6 +325,12 @@ $(document).ready ->
   window.__spinning = true
   window.__titular = new Titular
 
+  # MASSIVE HACK
+  # Rewrite the URL of the audio stream to the relay server permanently
+  # - can't change server.py while people are listening
+  $('.ui360 a').attr("href", "http://relay01.forever.fm/all.mp3")
+  soundManager.reboot()
+
   $('body').keyup (e) ->
     s = window.soundManager.sounds.ui360Sound0
     if e.keyCode == 32
