@@ -28,41 +28,38 @@ mp3_queue = Queue.Queue()
 started_at_timestamp = time.time()
 
 
-def listen(addr=config.primary_url):
-    r = urllib2.urlopen(addr)
-    while True:
-        mp3_queue.put(r.read(128))
+r = urllib2.urlopen(config.primary_url)
 
 class StreamHandler(tornado.web.RequestHandler):
     listeners = []
-    __packet = None
 
     @classmethod
     def stream_frames(cls):
         while True:
             try:
-                cls.__packet = mp3_queue.get()
-                for i, listener in enumerate(cls.listeners):
-                    if listener.request.connection.stream.closed():
-                        try:
-                            listener.finish()
-                        except:
-                            log.error("Could not finish listener:\n%s",
-                                    traceback.format_exc())
-                    else:
-                        listener.write(cls.__packet)
-                        listener.flush()
+                packet = r.read(1024)
+                tornado.ioloop.IOLoop.instance().add_callback(lambda: cls.broadcast(packet))
             except:
                 log.error("Could not broadcast due to: \n%s", traceback.format_exc())
+
+    @classmethod
+    def broadcast(cls, packet):
+        for i, listener in enumerate(cls.listeners):
+            if listener.request.connection.stream.closed():
+                try:
+                    listener.finish()
+                except:
+                    pass
+            else:
+                listener.write(packet)
+                listener.flush()
+
 
     @tornado.web.asynchronous
     def get(self):
         ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
         log.info("Added new listener at %s", ip)
         self.set_header("Content-Type", "audio/mpeg")
-        if self.__packet:
-            self.write(self.__packet)
-            self.flush()
         self.listeners.append(self)
 
     def on_finish(self):
@@ -70,14 +67,15 @@ class StreamHandler(tornado.web.RequestHandler):
         log.info("Removed listener at %s", ip)
         self.listeners.remove(self)
 
+
 if __name__ == "__main__":
     Daemon()
 
     for handler in logging.root.handlers:
         logging.root.removeHandler(handler)
     logging.root.addHandler(customlog.MultiprocessingStreamHandler())
-
     log = logging.getLogger(config.log_name)
+
     log.info("Starting %s relay...", config.app_name)
 
     tornado.ioloop.PeriodicCallback(
@@ -94,10 +92,6 @@ if __name__ == "__main__":
     frame_sender = threading.Thread(target=StreamHandler.stream_frames)
     frame_sender.daemon = True
     frame_sender.start()
-
-    reader = threading.Thread(target=listen)
-    reader.daemon = True
-    reader.start()
 
     application.listen(config.http_port)
     tornado.ioloop.IOLoop.instance().start()
