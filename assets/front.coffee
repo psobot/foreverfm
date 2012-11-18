@@ -8,7 +8,7 @@ soundManager.setup
   url: '/static/flash/'
 
 NUM_TRACKS = 5
-MP3_BUFFER = 2.5  # number of seconds buffered (emperical)
+MP3_BUFFER = 2  # number of seconds buffered (emperically determined)
 DONE_TRACKS_LIMIT = 4
 MAGIC_REGEX = /(\s*-*\s*((\[|\(|\*|~)[^\)\]]*(mp3|dl|description|free|download|comment|out now|clip|bonus|preview|teaser|in store|follow me|follow on|prod|full|snip|exclusive|beatport|original mix)+[^\)\]]*(\]|\)|\*|~)|((OUT NOW( ON \w*)?|free|download|preview|follow me|follow on|teaser|in store|mp3|dl|description|full|snip|exclusive|beatport|original mix).*$))\s*|\[(.*?)\])/i
 

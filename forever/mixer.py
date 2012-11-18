@@ -4,7 +4,6 @@ Heavily modified by Peter Sobot for integration with forever.fm.
 """
 import os
 import gc
-import uuid
 import numpy
 import apikeys
 import logging
