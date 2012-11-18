@@ -23,11 +23,7 @@ import tornado.ioloop
 import tornado.template
 from daemon import Daemon
 
-mp3_queue = Queue.Queue()
-
 started_at_timestamp = time.time()
-
-
 r = urllib2.urlopen(config.primary_url)
 
 class StreamHandler(tornado.web.RequestHandler):
@@ -40,7 +36,10 @@ class StreamHandler(tornado.web.RequestHandler):
                 packet = r.read(1024)
                 tornado.ioloop.IOLoop.instance().add_callback(lambda: cls.broadcast(packet))
             except:
-                log.error("Could not broadcast due to: \n%s", traceback.format_exc())
+                try:
+                    r = urllib2.urlopen(config.primary_url)
+                except:
+                    log.error("Could not reopen stream!\n%s", traceback.format_exc())
 
     @classmethod
     def broadcast(cls, packet):
