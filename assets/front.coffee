@@ -275,13 +275,19 @@ connectedly = (callback, authenticate) ->
     token = localStorage.getItem "accessToken"
     if token?
       SC.accessToken token
-      getFavorites callback
+      getPersistent callback
     else if not authenticate? or authenticate
       SC.connect (a) ->
         localStorage.setItem('accessToken', SC.accessToken()) if localStorage?
-        getFavorites callback
+        getPersistent callback
 
-getFavorites = (callback) ->
+getPersistent = (callback) ->
+  _downloaded = localStorage.getItem("downloaded")
+  if _downloaded?
+    SC.downloaded = _downloaded.split(',')
+  else
+    SC.downloaded = []
+    localstorage.setItem('downloaded', SC.downloaded.join(','))
   SC.get "/me/favorites/", {limit: 1000}, (favoriteds) ->
     SC.favorites = (track.id for track in favoriteds)
     callback SC.favorites
@@ -343,8 +349,9 @@ $(document).ready ->
   setTimeout(( -> $("#share").css("overflow", "visible")), 2000)
   w = new Waveform document.getElementById "waveform"
   
-  connectedly (favorites) ->
-    $("#track_#{id} .like").addClass('selected') for id in favorites
+  connectedly () ->
+    $("#track_#{id} .like").addClass('selected') for id in SC.favorites
+    $("#track_#{id} .download").addClass('selected') for id in SC.downloaded
   , false
 
   $(window).resize ->
@@ -396,7 +403,7 @@ $(document).ready ->
 
   $(document).on "click", 'a.download', (e) ->
     e.preventDefault()
-    trackid = $(this).data 'track'
+    trackid = parseInt($(this).data 'track')
     me = this
     connectedly ->
       $(me).addClass('selected')
@@ -407,6 +414,9 @@ $(document).ready ->
       target = $("#track_#{trackid} .stats .count.download")
       target.html(comma(parseInt(target.html().replace(',', '')) + 1))
 
+      # Update persistence
+      SC.downloaded.push(trackid)
+      localstorage.setItem('downloaded', SC.downloaded.join(','))
 
   window._waveform = w
   window._socket = s
