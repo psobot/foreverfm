@@ -287,7 +287,7 @@ getPersistent = (callback) ->
     SC.downloaded = _downloaded.split(',')
   else
     SC.downloaded = []
-    localstorage.setItem('downloaded', SC.downloaded.join(','))
+    localStorage.setItem('downloaded', SC.downloaded.join(','))
   SC.get "/me/favorites/", {limit: 1000}, (favoriteds) ->
     SC.favorites = (track.id for track in favoriteds)
     callback SC.favorites
@@ -416,7 +416,7 @@ $(document).ready ->
 
       # Update persistence
       SC.downloaded.push(trackid)
-      localstorage.setItem('downloaded', SC.downloaded.join(','))
+      localStorage.setItem('downloaded', SC.downloaded.join(','))
 
   window._waveform = w
   window._socket = s
