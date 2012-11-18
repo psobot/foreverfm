@@ -4,18 +4,12 @@ by @psobot, Nov 17 2012
 """
 
 import config
-import apikeys
 import customlog
 import logging
 
-import os
-import sys
 import time
-import Queue
-import socket
 import restart
 import urllib2
-import datetime
 import traceback
 import threading
 import tornado.web
@@ -23,56 +17,89 @@ import tornado.ioloop
 import tornado.template
 from daemon import Daemon
 
+if __name__ == "__main__":
+    Daemon()
+    for handler in logging.root.handlers:
+        logging.root.removeHandler(handler)
+    logging.root.addHandler(customlog.MultiprocessingStreamHandler())
+    log = logging.getLogger(__name__)
+    log.setLevel(logging.DEBUG)
+
 started_at_timestamp = time.time()
+log.info("Opening stream %s", config.primary_url)
 r = urllib2.urlopen(config.primary_url)
+log.info("Opened stream!")
+PACKET_SIZE = config.packet_size
+
 
 class StreamHandler(tornado.web.RequestHandler):
     listeners = []
+    __packet = ""
 
     @classmethod
     def stream_frames(cls):
         global r
-        l = tornado.ioloop.IOLoop.instance()
         while True:
             try:
-                cls.__packet = r.read(128)
+                cls.__packet = r.read(PACKET_SIZE)
                 for i, listener in enumerate(cls.listeners):
                     if listener.request.connection.stream.closed():
                         try:
                             listener.finish()
                         except:
-                            pass
+                            cls.listeners.remove(listener)
                     else:
                         listener.write(cls.__packet)
                         listener.flush()
             except urllib2.URLError:
+                log.error("Got error:\n%s", traceback.format_exc())
                 try:
+                    log.info("Reopening stream.")
                     r = urllib2.urlopen(config.primary_url)
                 except:
                     log.error("Could not reopen stream!\n%s", traceback.format_exc())
 
     @tornado.web.asynchronous
     def get(self):
-        ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
-        log.info("Added new listener at %s", ip)
-        self.set_header("Content-Type", "audio/mpeg")
-        self.write(self.__packet)
-        self.listeners.append(self)
+        try:
+            ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
+            log.info("Added new listener at %s", ip)
+            self.set_header("Content-Type", "audio/mpeg")
+            self.write(self.__packet)
+            self.listeners.append(self)
+        except:
+            log.error("%s", traceback.format_exc())
+            tornado.web.RequestHandler.send_error(self, 500)
 
     def on_finish(self):
-        ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
-        log.info("Removed listener at %s", ip)
-        self.listeners.remove(self)
+        try:
+            ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
+            log.info("Removed listener at %s", ip)
+            self.listeners.remove(self)
+        except:
+            log.error("%s", traceback.format_exc())
+
+
+class InfoHandler(tornado.web.RequestHandler):
+    def get(self):
+        try:
+            self.set_header("Content-Type", "application/json")
+            self.finish({"listeners": {
+                "count": len(StreamHandler.listeners),
+                "ips": [l.request.headers.get('X-Real-Ip', l.request.remote_ip)
+                           for l in StreamHandler.listeners]
+            }})
+        except:
+            log.error("%s", traceback.format_exc())
+            tornado.web.RequestHandler.send_error(self, 500)
+
+
+def update():
+    global PACKET_SIZE
+    PACKET_SIZE = config.packet_size
 
 
 if __name__ == "__main__":
-    Daemon()
-
-    for handler in logging.root.handlers:
-        logging.root.removeHandler(handler)
-    logging.root.addHandler(customlog.MultiprocessingStreamHandler())
-    log = logging.getLogger(config.log_name)
-
     log.info("Starting %s relay...", config.app_name)
 
     tornado.ioloop.PeriodicCallback(
@@ -81,9 +108,11 @@ if __name__ == "__main__":
                               len(StreamHandler.listeners)),
         config.restart_timeout * 1000
     ).start()
+    tornado.ioloop.PeriodicCallback(update, 5000).start()
 
     application = tornado.web.Application([
-        (r"/all.mp3", StreamHandler)
+        (r"/all.mp3", StreamHandler),
+        (r"/", InfoHandler)
     ])
 
     frame_sender = threading.Thread(target=StreamHandler.stream_frames)

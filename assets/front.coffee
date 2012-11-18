@@ -351,7 +351,7 @@ $(document).ready ->
   
   connectedly () ->
     $("#track_#{id} .like").addClass('selected') for id in SC.favorites
-    $("#track_#{id} .download").addClass('selected') for id in SC.downloaded
+    $("#track_#{id} a.download").addClass('selected') for id in SC.downloaded
   , false
 
   $(window).resize ->
