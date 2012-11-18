@@ -13,7 +13,8 @@
     "relay"
   ],
   "dependencies": {
-    "daemonize2": ">=0.4.0-rc.5"
+    "daemonize2": ">=0.4.0-rc.5",
+    "winston": "0.6.2"
   },
   "license": "MIT",
   "engines": {

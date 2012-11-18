@@ -2,6 +2,7 @@
 //  Simple, lightweight, untested.
 
 var http = require('http');
+var winston = require('winston');
 var daemon = require("daemonize2").setup({
     main: "relay.js",
     name: "relay",
@@ -16,15 +17,17 @@ var options = {
 var port = 8192;
 var listeners = [];
 
+winston.add(winston.transports.File, { filename: 'relay.log', handleExceptions: true });
+
 var listen = function(callback) {
     req = http.request(options, function (res) {
         if ( res.statusCode != 200 ) {
-            console.log("OH NOES: Got a " + res.statusCode + " back.");
+            winston.error("OH NOES: Got a " + res.statusCode + " back.");
         } else {
-            callback();
             res.on('data', function (buf) {
                 for (l in listeners) listeners[l].write(buf);
             });
+            callback();
         }
     })
     req.end();
@@ -32,22 +35,26 @@ var listen = function(callback) {
 
 var run = function() {
     http.createServer(function(request, response) {
-        if (request.url == "/all.mp3") {
-            response.writeHead(200, {'Content-Type': 'audio/mpeg'});
-            response.on('close', function () {
-                console.log("Removed listener: " + request.headers['x-real-ip']);
-                listeners.splice(listeners.indexOf(response), 1);
-            });
-            listeners.push(response);
-            console.log("Added listener: " + request.headers['x-real-ip']);
-            console.log("Now at " + listeners.length + " listeners.");
-        } else {
-            response.write(JSON.stringify({
-                listeners: {
-                    count: listeners.length
-                }
-            }));
-            response.end();
+        try {
+            if (request.url == "/all.mp3") {
+                response.writeHead(200, {'Content-Type': 'audio/mpeg'});
+                response.on('close', function () {
+                    winston.log("Removed listener: " + request.headers['x-real-ip']);
+                    listeners.splice(listeners.indexOf(response), 1);
+                });
+                listeners.push(response);
+                winston.log("Added listener: " + request.headers['x-real-ip']);
+                winston.log("Now at " + listeners.length + " listeners.");
+            } else {
+                response.write(JSON.stringify({
+                    listeners: {
+                        count: listeners.length
+                    }
+                }));
+                response.end();
+            }
+        } catch (err) {
+            winston.error(err);
         }
     }).listen(port);
 }
