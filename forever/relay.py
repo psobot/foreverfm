@@ -43,7 +43,7 @@ class StreamHandler(tornado.web.RequestHandler):
                         except:
                             pass
                     else:
-                        listener.write(packet)
+                        listener.write(cls.__packet)
                         listener.flush()
             except urllib2.URLError:
                 try:
