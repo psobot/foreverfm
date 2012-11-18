@@ -22,6 +22,7 @@ import tornado.web
 import tornado.ioloop
 import tornado.template
 from daemon import Daemon
+from functools import partial
 
 started_at_timestamp = time.time()
 r = urllib2.urlopen(config.primary_url)
@@ -31,10 +32,10 @@ class StreamHandler(tornado.web.RequestHandler):
 
     @classmethod
     def stream_frames(cls):
+        l = tornado.ioloop.IOLoop.instance()
         while True:
             try:
-                packet = r.read(1024)
-                tornado.ioloop.IOLoop.instance().add_callback(lambda: cls.broadcast(packet))
+                l.add_callback(partial(cls.broadcast, r.read(256)))
             except:
                 try:
                     r = urllib2.urlopen(config.primary_url)
