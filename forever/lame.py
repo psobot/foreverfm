@@ -89,9 +89,13 @@ class Lame(threading.Thread):
 
         self.lame = None
         self.buffered = 0
+        self.in_samples = 0
+        self.out_samples = 0
         self.oqueue = oqueue
         self.ofile = ofile
         self.callback = callback
+
+        self.markers = []
         self.finished = False
         self.sent = False
         self.ready = threading.Semaphore()
@@ -107,15 +111,17 @@ class Lame(threading.Thread):
     def pcm_datarate(self):
         return self.samplerate * self.channels * (self.input_wordlength / 8)
 
-    def add_pcm(self, data):
+    def add_pcm(self, data, marker=None):
         """
         Expects PCM data in the form of a NumPy array.
 
         """
         if self.lame.returncode is not None:
             return False
+        self.markers.append((self.in_samples, marker))
         self.encode.acquire()
         samples = len(data)
+        self.in_samples += samples
         self.__write_queue.put(data)
         del data
         put_time = time.time()
@@ -193,13 +199,17 @@ class Lame(threading.Thread):
                 if self.buffered < (self.safety_buffer * self.samplerate):
                     self.ready.release()
                 if len(buf):
-                    if self.oqueue:
-                        self.oqueue.put(buf)
+                    self.out_samples += SAMPLES_PER_FRAME
                     if self.ofile:
                         self.ofile.write(buf)
                         self.ofile.flush()
                     if self.callback:
                         self.callback(False)
+                    if self.syncqueue and \
+                       self.markers and self.markers[0][0] < self.out_samples:
+                        self.syncqueue.put(self.markers.pop(0)[1])
+                    if self.oqueue:
+                        self.oqueue.put(buf)
                     if self.real_time and self.sent:
                         now = time.time()
                         if last:
