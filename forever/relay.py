@@ -52,8 +52,14 @@ class StreamHandler(tornado.web.RequestHandler):
                         except:
                             cls.listeners.remove(listener)
                     else:
-                        listener.write(cls.__packet)
-                        listener.flush()
+                        try:
+                            listener.write(cls.__packet)
+                            listener.flush()
+                        except:
+                            try:
+                                cls.listeners.remove(listener)
+                            except:
+                                pass
                 cls.sent += len(cls.__packet)
             except urllib2.URLError:
                 log.error("Got error:\n%s", traceback.format_exc())
