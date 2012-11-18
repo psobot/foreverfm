@@ -84,7 +84,7 @@ class Lame(threading.Thread):
     chunk_size = samplerate * channels * (input_wordlength / 8)
     data = None
 
-    def __init__(self, callback=None, ofile=None, oqueue=None):
+    def __init__(self, callback=None, ofile=None, oqueue=None, syncqueue=None):
         threading.Thread.__init__(self)
 
         self.lame = None
@@ -92,6 +92,7 @@ class Lame(threading.Thread):
         self.in_samples = 0
         self.out_samples = 0
         self.oqueue = oqueue
+        self.syncqueue = syncqueue
         self.ofile = ofile
         self.callback = callback
 

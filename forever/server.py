@@ -144,18 +144,27 @@ class StreamHandler(tornado.web.RequestHandler):
 
     @tornado.web.asynchronous
     def get(self):
-        ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
-        log.info("Added new listener at %s", ip)
-        if len(self.listeners) > config.relay_limit:
-            self.redirect(random.choice(config.relays))
-        else:
-            self.set_header("Content-Type", "audio/mpeg")
-            self.listeners.append(self)
+        try:
+            ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
+            if len(self.listeners) >= config.relay_limit and \
+                ip not in config.relay_ips:
+                relay = random.choice(config.relays)
+                log.info("Redirected new listener %s to %s", ip, relay)
+                self.redirect(relay)
+            else:
+                log.info("Added new %s at %s",
+                        ("relay" if ip in config.relay_ips else "listener"), ip)
+                self.set_header("Content-Type", "audio/mpeg")
+                self.listeners.append(self)
+        except:
+            log.error("Error in stream.get:\n%s", traceback.format_exc())
+            tornado.web.RequestHandler.send_error(self, 500)
 
     def on_finish(self):
-        ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
-        log.info("Removed listener at %s", ip)
-        self.listeners.remove(self)
+        if self in self.listeners:
+            self.listeners.remove(self)
+            ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
+            log.info("Removed listener at %s", ip)
 
 
 class SocketConnection(tornadio2.conn.SocketConnection):

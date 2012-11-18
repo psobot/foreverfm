@@ -46,6 +46,11 @@ blacklist:
 
 #   Bandwidth relay settings
 primary_url: http://forever.fm/all.mp3
-relay_limit: 20 #   After this many listeners, delegate the rest to relay servers.
+relay_limit: 1  # After this many listeners, delegate the rest to relay servers.
 relays:
   - http://relay01.forever.fm/all.mp3
+relay_ips:
+  - ::1
+  - 127.0.0.1
+  - 199.19.119.146
+  - 198.74.61.182
