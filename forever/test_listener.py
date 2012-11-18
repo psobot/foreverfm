@@ -7,7 +7,9 @@ from lame import frame_length
 def listen(host, port, f="all.mp3"):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((host, port))
-    s.send("GET /%s HTTP/1.0\r\n\r\n" % f)
+    connect = "GET /%s HTTP/1.1\r\n\r\nHost: %s\r\n\r\n" % (f, host)
+    print connect
+    s.send(connect)
 
     at = None
     times = []
