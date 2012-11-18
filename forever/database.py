@@ -39,8 +39,7 @@ def merge(sc, echonest_analysis):
         hashlib.sha1(e.echoprintstring).hexdigest(),
     )
     for k, v in t.__dict__.iteritems():
-        if k != 'title':  # Remove title, as it contains a lot of unicode that we want to ignore.
-            sc.obj[k] = v
+        sc.obj[k] = v
     return sc
 
 
