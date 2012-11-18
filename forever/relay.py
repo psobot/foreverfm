@@ -35,6 +35,8 @@ PACKET_SIZE = config.packet_size
 class StreamHandler(tornado.web.RequestHandler):
     listeners = []
     __packet = ""
+    recv = 0L
+    sent = 0L
 
     @classmethod
     def stream_frames(cls):
@@ -42,6 +44,7 @@ class StreamHandler(tornado.web.RequestHandler):
         while True:
             try:
                 cls.__packet = r.read(PACKET_SIZE)
+                cls.recv += len(cls.__packet)
                 for i, listener in enumerate(cls.listeners):
                     if listener.request.connection.stream.closed():
                         try:
@@ -51,6 +54,7 @@ class StreamHandler(tornado.web.RequestHandler):
                     else:
                         listener.write(cls.__packet)
                         listener.flush()
+                cls.sent += len(cls.__packet)
             except urllib2.URLError:
                 log.error("Got error:\n%s", traceback.format_exc())
                 try:
@@ -58,6 +62,8 @@ class StreamHandler(tornado.web.RequestHandler):
                     r = urllib2.urlopen(config.primary_url)
                 except:
                     log.error("Could not reopen stream!\n%s", traceback.format_exc())
+            except:
+                log.error("Major failure in stream_frames:\n%s", traceback.format_exc())
 
     @tornado.web.asynchronous
     def get(self):
@@ -84,11 +90,17 @@ class InfoHandler(tornado.web.RequestHandler):
     def get(self):
         try:
             self.set_header("Content-Type", "application/json")
-            self.finish({"listeners": {
-                "count": len(StreamHandler.listeners),
-                "ips": [l.request.headers.get('X-Real-Ip', l.request.remote_ip)
-                           for l in StreamHandler.listeners]
-            }})
+            self.finish({
+                "listeners": {
+                    "count": len(StreamHandler.listeners),
+                    "ips": [l.request.headers.get('X-Real-Ip', l.request.remote_ip)
+                               for l in StreamHandler.listeners]
+                },
+                "packets": {
+                    "sent": StreamHandler.sent,
+                    "recv": StreamHandler.recv
+                }
+            })
         except:
             log.error("%s", traceback.format_exc())
             tornado.web.RequestHandler.send_error(self, 500)
