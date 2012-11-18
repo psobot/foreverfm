@@ -3,20 +3,19 @@ import lame
 import Queue
 import config
 import logging
-import traceback
 
 LAG_LIMIT = config.lag_limit
 log = logging.getLogger(config.log_name)
-SECONDS_PER_FRAME = lame.SAMPLES_PER_FRAME / 44100.0
 
 
 class Listeners(list):
-    def __init__(self, queue, name):
+    def __init__(self, queue, name, semaphore):
         self.queue = queue
         self.__name = name
         self.__packet = None
         self.__last_send = None
         self.__lag = 0
+        self.__semaphore = semaphore
         list.__init__(self)
 
     def append(self, listener):
@@ -34,17 +33,20 @@ class Listeners(list):
 
             self.__broadcast()
             if self.__last_send:
-                self.__lag += (time.time() - self.__last_send) - SECONDS_PER_FRAME
+                self.__lag += int((time.time() - self.__last_send) * 44100)\
+                                - lame.SAMPLES_PER_FRAME
             else:
                 log.info("Sending first frame for %s.", self.__name)
-            self.__last_send = time.time()
+                self.__semaphore.release()
 
             if self.__lag > 0:
                 log.warning("Queue %s lag detected. (%2.2f ms)",
-                            self.__name, self.__lag * 1000)
+                            self.__name, (self.__lag * 1000.0 / 44100.0))
                 while self.__lag > 0 and not self.queue.empty():
                     self.__broadcast()
-                    self.__lag -= SECONDS_PER_FRAME
+                    self.__lag -= lame.SAMPLES_PER_FRAME
+                log.warning("Queue %s lag compensated. Leading by %2.2f ms.",
+                            self.__name, (self.__lag *  -1000.0 / 44100.0))
 
             self.__last_send = time.time()
         except Queue.Empty:
@@ -59,9 +61,8 @@ class Listeners(list):
             if listener.request.connection.stream.closed():
                 try:
                     listener.finish()
-                except:
-                    log.error("Could not finish listener:\n%s",
-                              traceback.format_exc())
+                except (AssertionError, IOError):
+                    self.remove(listener)
             else:
                 listener.write(self.__packet)
                 listener.flush()

@@ -2,24 +2,27 @@
 Based off of `capsule`, by Tristan Jehan and Jason Sundram.
 Heavily modified by Peter Sobot for integration with forever.fm.
 """
-
-from echonest.audio import assemble, LocalAudioStream
-from audio import AudioData
-
-from capsule_support import order_tracks, resample_features, \
-                            timbre_whiten, initialize, make_transition, terminate, \
-                            FADE_OUT, is_valid, LOUDNESS_THRESH
 import os
 import gc
-import time
+import uuid
+import numpy
 import apikeys
 import logging
 import urllib2
 import traceback
 import threading
 import multiprocessing
+
 from lame import Lame
+from timer import Timer
 from database import Database, merge
+
+from echonest.audio import LocalAudioStream
+from audio import AudioData
+
+from capsule_support import order_tracks, resample_features, \
+                            timbre_whiten, initialize, make_transition, terminate, \
+                            FADE_OUT, is_valid, LOUDNESS_THRESH
 
 log = logging.getLogger(__name__)
 
@@ -37,11 +40,11 @@ def metadata_of(a):
     raise ValueError("No metadata found!")
 
 
-def generate_metadata(a, ctime):
+def generate_metadata(a, samples):
     d = {
-        'time': ctime,
         'action': a.__class__.__name__.split(".")[-1],
-        'duration': a.duration
+        'duration': a.duration,
+        'samples': samples
     }
     m = metadata_of(a)
     if isinstance(m, tuple):
@@ -143,6 +146,13 @@ class Mixer(multiprocessing.Process):
 
         log.info("Grabbing stream...", uid=x.id)
         laf = LocalAudioStream(self.get_stream(x))
+        #   To ensure that we have output,
+        try:
+            #   Read a single sample from the output to ensure
+            #   FFMPEG can read *any* audio for us.
+            laf[0:1]
+        except (IOError, ValueError):
+            raise ValueError("Could not read any samples from FFMPEG!")
         setattr(laf, "_metadata", x)
         Database().ensure(merge(x, laf.analysis))
         return self.process(laf)
@@ -196,7 +206,6 @@ class Mixer(multiprocessing.Process):
                                       stay_time,
                                       self.transition_time)
                 self.tracks[0].finish()
-                del self.tracks[0].analysis
                 del self.tracks[0]
                 gc.collect()
             log.info("Waiting for a new track.")
@@ -219,43 +228,22 @@ class Mixer(multiprocessing.Process):
             e.start()
 
         try:
-            ctime = None
-            for i, _actions in enumerate(self.loop()):
-                _a = time.time()
+            self.ctime = None
+            for i, actions in enumerate(self.loop()):
                 log.info("Rendering audio data...")
-                ADs = []
-                actions = []
-                for a in _actions:
+                for a in actions:
                     try:
-                        ADs.append(a.render())
-                        actions.append(a)
+                        with Timer() as t:
+                            ad = a.render()
+                            f = 32767.0 / numpy.max(numpy.absolute(ad.data.flatten()))
+                            ad.data = ((ad.data * f) if f < 1.000031 else ad.data).astype(numpy.int16)
+                            for encoder in self.encoders:
+                                encoder.add_pcm(ad.data)
+                            self.infoqueue.put(generate_metadata(a, len(ad)))
+                        log.info("Rendered in %fs!", t.ms)
                     except:
                         log.error("Could not render %s. Skipping.\n%s", a,
                                   traceback.format_exc())
-                log.info("Rendered in %fs!", time.time() - _a)
-                _a = time.time()
-                if ADs:
-                    log.info("Assembling audio data...")
-                    out = assemble(ADs, numChannels=2, sampleRate=self.samplerate)
-                    log.info("Assembled in %fs!", time.time() - _a)
-                else:
-                    out = None
-
-                del ADs
-                gc.collect()
-                try:
-                    if not ctime:
-                        ctime = time.time()
-                    if out:
-                        for a in actions:
-                            self.infoqueue.put(generate_metadata(a, ctime))
-                            ctime += a.duration
-                        for encoder in self.encoders:
-                            encoder.add_pcm(out.data)
-                except:
-                    log.error("Could not generate info or encode:\n%s",
-                              traceback.format_exc())
-                del out
                 gc.collect()
         except:
             log.error("Something failed in mixer.run:\n%s",

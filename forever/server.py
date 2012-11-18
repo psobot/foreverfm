@@ -17,6 +17,7 @@ import info
 import random
 import restart
 import datetime
+import threading
 import traceback
 import tornado.web
 import statistician
@@ -48,6 +49,7 @@ SECONDS_PER_FRAME = lame.SAMPLES_PER_FRAME / 44100.0
 
 templates = tornado.template.Loader(config.template_dir)
 templates.autoescape = None
+first_frame = threading.Semaphore(0)
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -134,7 +136,7 @@ class StreamHandler(tornado.web.RequestHandler):
             klass = type(
                 name + "Handler",
                 (StreamHandler,),
-                {"listeners": Listeners(q, name)}
+                {"listeners": Listeners(q, name, first_frame)}
             )
             cls.__subclasses.append(klass)
             routes.append((endpoint, klass))
@@ -194,7 +196,7 @@ if __name__ == "__main__":
     if stream:
         import brain
         Hotswap(track_queue.put, brain).start()
-    Hotswap(InfoHandler.add, info, 'generate', info_queue).start()
+    Hotswap(InfoHandler.add, info, 'generate', info_queue, first_frame).start()
     Hotswap(MonitorSocket.update,
             statistician, 'generate',
             get_listeners,

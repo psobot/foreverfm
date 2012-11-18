@@ -9,7 +9,7 @@ db_host: localhost
 db_user: root
 db_pass: ""
 
-lag_limit: 2            #   seconds - how much we can lag by before dropping frames.
+lag_limit: 88200        #   samples - how much we can lag by before dropping frames.
 restart_timeout: 3      #   seconds between polls to restart.txt
 http_port: 8192
 socket_port: 8193
