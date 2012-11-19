@@ -10,7 +10,7 @@
 }
 .buttons .download::before {
   background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPCAYAAAA71pVKAAAAhklEQVR42s2RSwrEIBBEczpBEEFwIYjgKf3g0oPV6KJh1EliFoEpeEjbvtp4/FeklJjZlr33mNiXnXOY2JettZi4lhljIIwxC9/7RS6lQGt9S3u3ymjJOUMpdUrft5C8FqSU8OOr+v0gnhbEGCGEIPo8iLcFIQRwzvs5iNsFtVYSn4fEV/IB/GO9GY8ueL8AAAAASUVORK5CYII=);
-  background-position: 7px 5px;
+  background-position: 3px 2px;
   background-repeat: no-repeat;
 }
 .buttons .sc::before {
