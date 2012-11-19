@@ -96,11 +96,11 @@ class Frame
         <span class="artist">#{@artist}</span>
       </div>
       <div class='buttons'>
-        #{if @id then "<a href='#' data-track='#{@nid}' class='like #{if (SC.favorites? and @nid in SC.favorites) then "selected" else ""}'>&nbsp;</a>
-                       <a href='#' target='_blank' class='share'>&nbsp;</a>
+        #{if @id then "<a href='#' title='Like \"#{@title}\" on SoundCloud.' data-track='#{@nid}' class='like #{if (SC.favorites? and @nid in SC.favorites) then "selected" else ""}'>&nbsp;</a>
+                       <a href='#' title='Tweet about \"#{@title}\".' target='_blank' class='share'>&nbsp;</a>
                       " else ""}
-        #{if @download then "<a href='#{@download}' class='download #{if (SC.downloaded? and @nid in SC.downloaded) then "selected" else ""}' data-track='#{@nid}'>&nbsp;</a>" else ""}
-        #{if @url then "<a href='#{@url}' target='_blank' class='sc'>&nbsp;</a>" else ""}
+        #{if @download then "<a href='#{@download}' title='Download \"#{@title}\" from SoundCloud.'  class='download #{if (SC.downloaded? and @nid in SC.downloaded) then "selected" else ""}' data-track='#{@nid}'>&nbsp;</a>" else ""}
+        #{if @url then "<a href='#{@url}' title='View \"#{@title}\" on SoundCloud.' target='_blank' class='sc'>&nbsp;</a><a title='Make \"#{@title}\" your new jam.' href='http://www.thisismyjam.com/jam/create?url=#{encodeURIComponent(@url)}' target='_blank' class='jam'>&nbsp;</a>" else ""}
         #{if @purchaselink and @purchasetext then "<a href='#{@purchaselink}' target='_blank' class='buy'>#{@purchasetext}</a>" else ""}
       </div>
       #{if @stats then "
@@ -417,6 +417,10 @@ $(document).ready ->
       # Update persistence
       SC.downloaded.push(trackid)
       localStorage.setItem('downloaded', SC.downloaded.join(','))
+
+  $(document).on "click", 'a.jam', (e) ->
+    # TODO: Store this action in LocalStorage
+    $(this).addClass('selected')
 
   window._waveform = w
   window._socket = s
