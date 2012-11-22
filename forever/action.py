@@ -5,10 +5,12 @@ action.py
 
 Created by Tristan Jehan and Jason Sundram.
 """
+import numpy
 from numpy import zeros, multiply, float32, mean, copy
 
-from echonest.audio import assemble, AudioData
-from cAction import limit, crossfade, fadein, fadeout
+from echonest.audio import assemble
+from cAction import limit, crossfade, fadein, fadeout, fade
+from itertools import izip
 import logging
 
 import dirac
@@ -58,18 +60,38 @@ class Playback(object):
         self.start = float(start)
         self.duration = float(duration)
 
-    def render(self):
-        # self has start and duration, so it is a valid index into track.
-        output = self.track[self]
-        #self.track.remove_upto(self.start + self.duration)
+    @property
+    def samples(self):
+        if isinstance(self.duration, float):
+            return int(self.duration * 44100)
+        return self.duration
 
-        # Normalize volume if necessary
+    def render(self, chunk_size=None):
         gain = getattr(self.track, 'gain', None)
-        if gain != None:
-            # limit expects a float32 vector
-            output.data = limit(multiply(output.data, float32(gain)))
+        if chunk_size is None:
+            # self has start and duration, so it is a valid index into track.
+            output = self.track[self].data
 
-        return output
+            # Normalize volume if necessary
+            if gain is not None:
+                # limit expects a float32 vector
+                output = limit(multiply(output, float32(gain)))
+
+            yield output
+        else:
+            if isinstance(self.start, float):
+                start = int(self.start * 44100)
+                end = int((self.start + self.duration) * 44100)
+            else:
+                start, end = self.start, self.end
+            for i in xrange(start, end, chunk_size):
+                if gain is not None:
+                    yield limit(multiply(
+                            self.track[i:min(end, i + chunk_size)].data,
+                            float32(gain)
+                          )).astype(numpy.int16)
+                else:
+                    yield self.track[i:min(end, i + chunk_size)].data
 
     def __repr__(self):
         return "<Playback '%s'>" % self.track.analysis.pyechonest_track.title
@@ -81,13 +103,19 @@ class Playback(object):
 
 
 class Fadeout(Playback):
-    """Fadeout"""
-    def render(self):
+    def render(self, chunk_size=None):
         gain = getattr(self.track, 'gain', 1.0)
-        output = self.track[self]
-        # second parameter is optional -- in place function for now
-        output.data = fadeout(output.data, gain)
-        return output
+        if chunk_size is None:
+            yield fadeout(self.track[self].data, gain)
+        else:
+            start = int(self.start * 44100)
+            end = int((self.start + self.duration) * 44100)
+            for i in xrange(start, end, chunk_size):
+                e = min(end, i + chunk_size)
+                yield (fade(self.track[i:e].data, gain,
+                            1.0 - (float(i - start) / (end - start)),
+                            1.0 - (float(e - start) / (end - start)))
+                            .astype(numpy.int16))
 
     def __repr__(self):
         return "<Fadeout '%s'>" % self.track.analysis.pyechonest_track.title
@@ -99,13 +127,21 @@ class Fadeout(Playback):
 
 
 class Fadein(Playback):
-    """Fadein"""
-    def render(self):
+    def render(self, chunk_size=None):
         gain = getattr(self.track, 'gain', 1.0)
-        output = self.track[self]
-        # second parameter is optional -- in place function for now
-        output.data = fadein(output.data, gain)
-        return output
+        if chunk_size is None:
+            output = self.track[self].data
+            output = fadein(output, gain)
+            yield output
+        else:
+            start = int(self.start * 44100)
+            end = int((self.start + self.duration) * 44100)
+            for i in xrange(start, end, chunk_size):
+                e = min(end, i + chunk_size)
+                yield (fade(self.track[i:e].data, gain,
+                            (float(i - start) / (end - start)),
+                            (float(e - start) / (end - start)))
+                            .astype(numpy.int16))
 
     def __repr__(self):
         return "<Fadein '%s'>" % self.track.analysis.pyechonest_track.title
@@ -146,13 +182,26 @@ class Crossfade(object):
         self.duration = self.t1.duration
         self.mode = mode
 
-    def render(self):
-        t1, t2 = map(make_stereo, (self.t1.get(), self.t2.get()))
-        vecout = crossfade(t1.data, t2.data, self.mode)
-        audio_out = AudioData(ndarray=vecout, shape=vecout.shape,
-                                sampleRate=t1.sampleRate,
-                                numChannels=vecout.shape[1])
-        return audio_out
+    @property
+    def samples(self):
+        if isinstance(self.duration, float):
+            return int(self.duration * 44100)
+        return self.duration
+
+    def render(self, chunk_size=None):
+        #   For now, only support stereo tracks
+        assert self.t1.track.data.ndim == 2
+        assert self.t2.track.data.ndim == 2
+        if chunk_size is None:
+            yield crossfade(self.t1.data, self.t2.data, self.mode)
+        else:
+            start = int(self.s1 * 44100)
+            end = int((self.s1 + self.duration) * 44100)
+            for i in xrange(start, end, chunk_size):
+                e = min(end, i + chunk_size)
+                yield (crossfade(self.t1.track[i:e].data,
+                                 self.t2.track[i:e].data, self.mode,
+                                 self.samples, i - start).astype(numpy.int16))
 
     def __repr__(self):
         args = (self.t1.track.analysis.pyechonest_track.title, self.t2.track.analysis.pyechonest_track.title)
@@ -227,6 +276,8 @@ class Blend(object):
 
 
 class Crossmatch(Blend):
+    quality = 0
+
     """Makes a beat-matched crossfade between the two input tracks."""
     def calculate_durations(self):
         c, dec = 1.0, 1.0 / float(len(self.l1) + 1)
@@ -236,45 +287,81 @@ class Crossmatch(Blend):
             self.durations.append(c * d1 + (1 - c) * d2)
         self.duration = sum(self.durations)
 
+    @property
+    def samples(self):
+        if isinstance(self.duration, float):
+            return int(self.duration * 44100)
+        return self.duration
+
+    def g(self, d, gain, rate):
+        s = 44100
+        if gain is not None:
+            return limit(multiply(dirac.timeScale(d, rate, s, self.quality),
+                         float32(gain)))
+        else:
+            return dirac.timeScale(d, rate, s, self.quality)
+
     def stretch(self, t, l):
         """t is a track, l is a list"""
+        gain = getattr(t, 'gain', None)
         signal_start = int(l[0][0] * t.sampleRate)
-        signal_duration = int((sum(l[-1]) - l[0][0]) * t.sampleRate)
-
-        vecin = t[signal_start:signal_start + signal_duration].data
-
         rates = []
         for i in xrange(len(l)):
             rate = (int(l[i][0] * t.sampleRate) - signal_start,
                     self.durations[i] / l[i][1])
             rates.append(rate)
+        for i, ((s1, r1), (s2, r2)) in enumerate(izip(rates, rates[1:])):
+            s = int(s1 + signal_start)
+            e = int(s2 + signal_start) - 1
+            yield self.g(t[s:e].data, gain, r1)
+        end = signal_start + int((sum(l[-1]) - l[0][0]) * t.sampleRate)
+        yield self.g(t[e:end].data, gain, r2)
 
-        try:
-            vecout = dirac.timeScale(vecin, rates, t.sampleRate, 0)
-        except Exception as e:
-            log.error("Couldn't stretch: %s Retrying.", e)
-            vecout = vecin[:int(self.duration * t.sampleRate)]
-        if hasattr(t, 'gain'):
-            vecout = limit(multiply(vecout, float32(t.gain)))
+    def __rate_at(self, sample, l):
+        sample = int(sample)
+        for i, ((s1, d1), (s2, d2)) in enumerate(izip(l, l[1:])):
+            if sample >= int(s1 * 44100) and sample < int(s2 * 44100):
+                return self.durations[i] / d1
+        return self.durations[len(l) - 1] / l[-1][1]
 
-        audio_out = AudioData(ndarray=vecout, shape=vecout.shape,
-                                sampleRate=t.sampleRate,
-                                numChannels=vecout.shape[1])
-        return audio_out
+    def __boundary_between(self, start, end, l):
+        for i, ((s1, d1), (s2, d2)) in enumerate(izip(l, l[1:])):
+            if start >= (s1 * 44100) and start < (s2 * 44100) and end >= (s2 * 44100):
+                return int(s2 * 44100)
+        return int(l[-1][0] * 44100)
 
-    def render(self):
-        # use self.durations already computed
-        # 1) stretch the duration of each item in t1 and t2
-        # to the duration prescribed in durations.
-        out1 = self.stretch(self.t1, self.l1)
-        out2 = self.stretch(self.t2, self.l2)
+    def __buffered(self, t, l, c):
+        buf = None
+        for chunk in self.stretch(t, l):
+            if buf is not None:
+                chunk = numpy.append(buf, chunk, 0)
+                buf = None
+            if len(chunk) > c:
+                steps = range(0, len(chunk), c)
+                for s, e in izip(steps, steps[1:]):
+                    yield chunk[s:e]
+                buf = chunk[e:]
+            elif len(chunk) < c:
+                buf = chunk
+            else:
+                yield chunk
 
-        # 2) cross-fade the results
-        # out1.duration, out2.duration, and self.duration should be about
-        # the same, but it never hurts to be safe.
-        duration = min(out1.duration, out2.duration, self.duration)
-        c = Crossfade([out1, out2], [0, 0], duration, mode='equal_power')
-        return c.render()
+    def __limited(self, t, l, c, limit=None):
+        if limit is None:
+            limit = self.samples
+        for i, chunk in enumerate(self.__buffered(t, l, c)):
+            if (i * c) + len(chunk) > limit:
+                yield chunk[0:limit - (i * c)]
+                break
+            else:
+                yield chunk
+
+    def render(self, chunk_size=None):
+        stretch1, stretch2 = self.__limited(self.t1, self.l1, chunk_size),\
+                             self.__limited(self.t2, self.l2, chunk_size)
+        for i, (a, b) in enumerate(izip(stretch1, stretch2)):
+            yield crossfade(a, b, '', self.samples, i * chunk_size)\
+                    .astype(numpy.int16)
 
     def __repr__(self):
         args = (self.t1.analysis.pyechonest_track.title, self.t2.analysis.pyechonest_track.title)

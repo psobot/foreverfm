@@ -3,6 +3,7 @@ import subprocess
 import threading
 import traceback
 import logging
+import numpy
 import time
 
 log = logging.getLogger(__name__)
@@ -63,7 +64,8 @@ def frame_length(header):
     bitrate = BITRATE_TABLE[ord(header[2]) >> 4]
     sample_rate = SAMPLERATE_TABLE[(ord(header[2]) & 0b00001100) >> 2]
     padding = (ord(header[2]) & 0b00000010) >> 1
-    return int((float(SAMPLES_PER_FRAME) / sample_rate) * ((bitrate / 8) * 1000)) + padding
+    return int((float(SAMPLES_PER_FRAME) / sample_rate)
+               * ((bitrate / 8) * 1000)) + padding
 
 
 class Lame(threading.Thread):
@@ -81,7 +83,7 @@ class Lame(threading.Thread):
     block = False           #   Regardless of real-time, should we block
                             #   for as long as the audio we've encoded lasts?
 
-    chunk_size = samplerate * channels * (input_wordlength / 8)
+    stream_chunk_size = samplerate / 8
     data = None
 
     def __init__(self, callback=None, ofile=None, oqueue=None, syncqueue=None):
@@ -114,17 +116,20 @@ class Lame(threading.Thread):
 
     def add_pcm(self, data, marker=None):
         """
-        Expects PCM data in the form of a NumPy array.
+        Expects PCM data in the form of a NumPy array,
+        or an AudioRenderable that will be sliced according to the start and end.
 
         """
         if self.lame.returncode is not None:
             return False
         self.markers.append((self.in_samples, marker))
         self.encode.acquire()
-        samples = len(data)
-        self.in_samples += samples
+        if isinstance(data, numpy.ndarray):
+            samples = len(data)
+        else:
+            samples = data.samples
         self.__write_queue.put(data)
-        del data
+        self.in_samples += samples
         put_time = time.time()
         if self.buffered >= self.safety_buffer:
             self.ready.acquire()
@@ -141,16 +146,27 @@ class Lame(threading.Thread):
             data = self.__write_queue.get()
             if data is None:
                 break
-            while len(data):
-                chunk = data[:self.chunk_size]
-                data = data[self.chunk_size:]
-                self.buffered += len(chunk) / self.channels * (self.input_wordlength / 8)
+            if isinstance(data, numpy.ndarray):
+                self.buffered += len(data) / self.channels \
+                                          * (self.input_wordlength / 8)
                 try:
-                    chunk.tofile(self.lame.stdin)
-                    del chunk
+                    data.tofile(self.lame.stdin)
                 except IOError:
                     self.finished = True
                     break
+            else:
+                try:
+                    for chunk in data.render(self.stream_chunk_size):
+                        try:
+                            self.buffered += len(chunk) / self.channels \
+                                             * (self.input_wordlength / 8)
+                            chunk.tofile(self.lame.stdin)
+                        except IOError:
+                            self.finished = True
+                            break
+                except:
+                    log.error("Couldn't render segment due to:\n%s",
+                              traceback.format_exc())
             self.encode.release()
 
     #   TODO: Extend me to work for all samplerates
@@ -247,9 +263,9 @@ class Lame(threading.Thread):
 
 if __name__ == "__main__":
     import wave
-    import numpy
     f = wave.open("test.wav")
-    a = numpy.frombuffer(f.readframes(f.getnframes()), dtype=numpy.int16).reshape((-1, 2))
+    a = numpy.frombuffer(f.readframes(f.getnframes()),
+                         dtype=numpy.int16).reshape((-1, 2))
 
     s = time.time()
     print "Encoding test.wav to testout.mp3..."

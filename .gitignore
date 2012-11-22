@@ -3,6 +3,7 @@ log.txt
 log.txt*
 *.mp3
 *.pyc
+*.pyo
 static/assets/*
 static/waveforms/*.png
 api_keys.yml

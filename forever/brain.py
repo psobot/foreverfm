@@ -183,6 +183,7 @@ def generate():
         d = Database()
         while test:
             yield d.merge(client.get('/tracks/67106027'))
+            yield d.merge(client.get('/tracks/66620496'))
 
         while True:
             log.info("Grabbing fresh tracklist from SoundCloud...")

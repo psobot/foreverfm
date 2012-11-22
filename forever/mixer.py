@@ -4,7 +4,6 @@ Heavily modified by Peter Sobot for integration with forever.fm.
 """
 import os
 import gc
-import numpy
 import apikeys
 import logging
 import urllib2
@@ -39,11 +38,11 @@ def metadata_of(a):
     raise ValueError("No metadata found!")
 
 
-def generate_metadata(a, samples):
+def generate_metadata(a):
     d = {
         'action': a.__class__.__name__.split(".")[-1],
         'duration': a.duration,
-        'samples': samples
+        'samples': a.samples
     }
     m = metadata_of(a)
     if isinstance(m, tuple):
@@ -200,10 +199,13 @@ class Mixer(multiprocessing.Process):
                                  - self.transition_time * 3,
                                 self.tracks[1].analysis.duration
                                  - self.transition_time * 3)
-                yield make_transition(self.tracks[0],
+                tra = make_transition(self.tracks[0],
                                       self.tracks[1],
                                       stay_time,
                                       self.transition_time)
+                del self.tracks[0].analysis
+                gc.collect()
+                yield tra
                 self.tracks[0].finish()
                 del self.tracks[0]
                 gc.collect()
@@ -233,12 +235,11 @@ class Mixer(multiprocessing.Process):
                 for a in actions:
                     try:
                         with Timer() as t:
-                            ad = a.render()
-                            f = 32767.0 / numpy.max(numpy.absolute(ad.data.flatten()))
-                            ad.data = ((ad.data * f) if f < 1.000031 else ad.data).astype(numpy.int16)
-                            for encoder in self.encoders:
-                                encoder.add_pcm(ad.data)
-                            self.infoqueue.put(generate_metadata(a, len(ad)))
+                            #   TODO: Move the "multiple encoding" support into
+                            #   LAME itself - it should be able to multiplex the
+                            #   streams itself.
+                            self.encoders[0].add_pcm(a)
+                            self.infoqueue.put(generate_metadata(a))
                         log.info("Rendered in %fs!", t.ms)
                     except:
                         log.error("Could not render %s. Skipping.\n%s", a,
