@@ -4,6 +4,7 @@ Heavily modified by Peter Sobot for integration with forever.fm.
 """
 import os
 import gc
+import hashlib
 import apikeys
 import logging
 import urllib2
@@ -42,8 +43,11 @@ def generate_metadata(a):
     d = {
         'action': a.__class__.__name__.split(".")[-1],
         'duration': a.duration,
-        'samples': a.samples
+        'samples': a.samples,
+        'unicode': u"\x96\x54",
+        'id': id(a)
     }
+    d['id'] = hashlib.md5(str(d)).hexdigest()
     m = metadata_of(a)
     if isinstance(m, tuple):
         m1, m2 = m
@@ -65,6 +69,12 @@ def generate_metadata(a):
     return d
 
 
+def failed(metadata, after=0):
+    metadata['failed'] = True
+    metadata['effective_length'] = after
+    return metadata
+
+
 class Mixer(multiprocessing.Process):
     def __init__(self, iqueue, oqueues, infoqueue,
                  settings=({},), initial=None,
@@ -73,7 +83,7 @@ class Mixer(multiprocessing.Process):
         self.iqueue = iqueue
         self.infoqueue = infoqueue
 
-        self.encoders = []
+        self.encoder = None
         if len(oqueues) != len(settings):
             raise ValueError("Differing number of output queues and settings!")
 
@@ -146,9 +156,9 @@ class Mixer(multiprocessing.Process):
         laf = LocalAudioStream(self.get_stream(x))
         #   To ensure that we have output,
         try:
-            #   Read a single sample from the output to ensure
+            #   Read a small number of samples from the output to ensure
             #   FFMPEG can read *any* audio for us.
-            laf[0:1]
+            assert len(laf[0:100].data) == 100
         except (IOError, ValueError):
             raise ValueError("Could not read any samples from FFMPEG!")
         setattr(laf, "_metadata", x)
@@ -222,23 +232,25 @@ class Mixer(multiprocessing.Process):
         # Last chunk. Should contain 1 instruction: fadeout.
         yield terminate(self.tracks[-1], FADE_OUT)
 
+    def on_failure(self, a, samples):
+        self.infoqueue.put(failed(generate_metadata(a), after=samples))
+
     def run(self):
-        for oqueue, settings in zip(self.oqueues, self.settings):
-            e = Lame(oqueue=oqueue, **settings)
-            self.encoders.append(e)
-            e.start()
+        self.encoder = Lame(oqueue=self.oqueues[0])
+        self.encoder.on_failure = self.on_failure
+        self.encoder.start()
 
         try:
             self.ctime = None
             for i, actions in enumerate(self.loop()):
-                log.info("Rendering audio data...")
+                log.info("Rendering audio data for %d actions.", len(actions))
                 for a in actions:
                     try:
                         with Timer() as t:
                             #   TODO: Move the "multiple encoding" support into
                             #   LAME itself - it should be able to multiplex the
                             #   streams itself.
-                            self.encoders[0].add_pcm(a)
+                            self.encoder.add_pcm(a)
                             self.infoqueue.put(generate_metadata(a))
                         log.info("Rendered in %fs!", t.ms)
                     except:
