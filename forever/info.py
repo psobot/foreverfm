@@ -15,6 +15,12 @@ def generate(iq, first_frame):
     samples = 0L
     while True:
         action = iq.get()
+        if 'failed' in action:
+            log.error("Sending retraction of data for id %s.", action['id'])
+            samples -= action['samples'] - action['effective_length']
+            yield action
+            continue
+
         action['time'] = stime + (samples / 44100.0)
         samples += action['samples']
 
@@ -50,5 +56,4 @@ def generate(iq, first_frame):
         action['waveform'] = "data:image/png;base64,%s" % \
                             base64.encodestring(a)
         action['width'] = int(action['duration'] * scwaveform.DEFAULT_SPEED)
-        action['unicode'] = u"\x96\x54"
         yield action

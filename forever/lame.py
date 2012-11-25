@@ -83,7 +83,7 @@ class Lame(threading.Thread):
     block = False           #   Regardless of real-time, should we block
                             #   for as long as the audio we've encoded lasts?
 
-    stream_chunk_size = samplerate / 8
+    chunk_len = samplerate / 8
     data = None
 
     def __init__(self, callback=None, ofile=None, oqueue=None, syncqueue=None):
@@ -103,6 +103,7 @@ class Lame(threading.Thread):
         self.sent = False
         self.ready = threading.Semaphore()
         self.encode = threading.Semaphore()
+        self.on_failure = None
         self.setDaemon(True)
 
         self.__write_queue = Queue()
@@ -155,18 +156,24 @@ class Lame(threading.Thread):
                     self.finished = True
                     break
             else:
+                i = 0
                 try:
-                    for chunk in data.render(self.stream_chunk_size):
+                    for chunk in data.render(self.chunk_len):
                         try:
                             self.buffered += len(chunk) / self.channels \
                                              * (self.input_wordlength / 8)
                             chunk.tofile(self.lame.stdin)
+                            i += len(chunk)
                         except IOError:
                             self.finished = True
                             break
-                except:
+                except Exception:
                     log.error("Couldn't render segment due to:\n%s",
                               traceback.format_exc())
+                    if i > 0:
+                        log.critical("Already encoded samples - stream will be off!")
+                    if self.on_failure:
+                        self.on_failure(data, i)
             self.encode.release()
 
     #   TODO: Extend me to work for all samplerates
