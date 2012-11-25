@@ -146,9 +146,9 @@ class Mixer(multiprocessing.Process):
         laf = LocalAudioStream(self.get_stream(x))
         #   To ensure that we have output,
         try:
-            #   Read a single sample from the output to ensure
+            #   Read a few samples from the output to ensure
             #   FFMPEG can read *any* audio for us.
-            laf[0:1]
+            assert len(laf[0:100].data) == 100
         except (IOError, ValueError):
             raise ValueError("Could not read any samples from FFMPEG!")
         setattr(laf, "_metadata", x)
