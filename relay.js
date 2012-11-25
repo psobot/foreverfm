@@ -21,25 +21,41 @@ var timeout = 1000; // ms
 winston.level = 'log';
 winston.add(winston.transports.File, { filename: 'relay.log', handleExceptions: true });
 
-var listen = function(callback, be_persistent) {
-    if (typeof be_persistent == 'undefined') {
-        be_persistent = false;
-    }
+var check = function(callback) {
     winston.info("Attempting to connect to generator...");
+    check_opts = {'method': 'HEAD'};
+    for (var a in options) check_opts[a] = options[a];
+    req = http.request(check_opts, function (res) {
+        if ( res.statusCode != 200 ) {
+            winston.error("OH NOES: Got a " + res.statusCode);
+        } else {
+            winston.info("Got 200 back from generator!")
+            if (typeof callback != "undefined") callback();
+        }
+    })
+    req.end();
+}
+
+var listen = function(callback) {
+    winston.info("Attempting to listen to generator...");
     req = http.request(options, function (res) {
         if ( res.statusCode != 200 ) {
             winston.error("OH NOES: Got a " + res.statusCode);
-            if (be_persistent) setTimeout(function(){listen(callback, be_persistent)}, timeout);
+            setTimeout(function(){listen(callback)}, timeout);
         } else {
-            winston.info("Connected to generator!")
+            winston.info("Listening to generator!")
             res.on('data', function (buf) {
-                for (l in listeners) listeners[l].write(buf);
+                try {
+                    for (l in listeners) listeners[l].write(buf);
+                } catch (err) {
+                    winston.log("Could not send to listeners: " + err);
+                }
             });
             res.on('end', function () {
                 winston.error("Stream ended! Restarting listener...");
-                setTimeout(function(){listen(function(){}, true)}, timeout);
+                setTimeout(function(){listen(function(){})}, timeout);
             });
-            callback();
+            if (typeof callback != "undefined") callback();
         }
     })
     req.end();
@@ -88,7 +104,7 @@ var run = function() {
 
 switch (process.argv[2]) {
     case "start":
-        listen(function() {
+        check(function() {
             daemon.start();
         });
         break;
@@ -96,5 +112,8 @@ switch (process.argv[2]) {
         daemon.stop();
         break;
     default:
-        listen(function() { run(); });
+        check(function() {
+          listen();
+          run();
+        });
 }

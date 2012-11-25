@@ -142,6 +142,23 @@ class StreamHandler(tornado.web.RequestHandler):
             routes.append((endpoint, klass))
         return routes
 
+    def head(self):
+        try:
+            ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
+            if len(self.listeners) >= config.relay_limit and \
+                ip not in config.relay_ips:
+                relay = random.choice(config.relays)
+                log.info("Redirected new listener %s to %s", ip, relay)
+                self.redirect(relay)
+            else:
+                log.info("Got HEAD for %s at %s.",
+                        ("relay" if ip in config.relay_ips else "listener"), ip)
+                self.set_header("Content-Type", "audio/mpeg")
+                self.finish()
+        except:
+            log.error("Error in stream.head:\n%s", traceback.format_exc())
+            tornado.web.RequestHandler.send_error(self, 500)
+
     @tornado.web.asynchronous
     def get(self):
         try:
