@@ -97,8 +97,12 @@ class Playback(object):
         return "<Playback '%s'>" % self.track.analysis.pyechonest_track.title
 
     def __str__(self):
+        try:
+            title = self.track.analysis.pyechonest_track.title
+        except:
+            title = "?"
         args = (self.start, self.start + self.duration,
-                self.duration, self.track.analysis.pyechonest_track.title)
+                self.duration, title)
         return "Playback\t%.3f\t-> %.3f\t (%.3f)\t%s" % args
 
 
@@ -289,9 +293,23 @@ class Crossmatch(Blend):
 
     @property
     def samples(self):
-        if isinstance(self.duration, float):
-            return int(self.duration * 44100)
-        return self.duration
+        if not hasattr(self, '__samples'):
+            durs = []
+            for l in [self.l1, self.l2]:
+                rates = []
+                o = 0
+                signal_start = int(l[0][0] * 44100)
+                for i in xrange(len(l)):
+                    rate = (int(l[i][0] * 44100) - signal_start,
+                            self.durations[i] / l[i][1])
+                    rates.append(rate)
+                for (s1, r1), (s2, r2) in zip(rates, rates[1:]):
+                    o += int((s2 - s1) * r1)
+                end = int((sum(l[-1]) - l[0][0]) * 44100)
+                o += int((end - rates[-1][0]) * rates[-1][1])
+                durs += [o]
+            self.__samples = min(durs)
+        return self.__samples
 
     def g(self, d, gain, rate):
         s = 44100
@@ -312,23 +330,10 @@ class Crossmatch(Blend):
             rates.append(rate)
         for i, ((s1, r1), (s2, r2)) in enumerate(izip(rates, rates[1:])):
             s = int(s1 + signal_start)
-            e = int(s2 + signal_start) - 1
+            e = int(s2 + signal_start)
             yield self.g(t[s:e].data, gain, r1)
         end = signal_start + int((sum(l[-1]) - l[0][0]) * t.sampleRate)
         yield self.g(t[e:end].data, gain, r2)
-
-    def __rate_at(self, sample, l):
-        sample = int(sample)
-        for i, ((s1, d1), (s2, d2)) in enumerate(izip(l, l[1:])):
-            if sample >= int(s1 * 44100) and sample < int(s2 * 44100):
-                return self.durations[i] / d1
-        return self.durations[len(l) - 1] / l[-1][1]
-
-    def __boundary_between(self, start, end, l):
-        for i, ((s1, d1), (s2, d2)) in enumerate(izip(l, l[1:])):
-            if start >= (s1 * 44100) and start < (s2 * 44100) and end >= (s2 * 44100):
-                return int(s2 * 44100)
-        return int(l[-1][0] * 44100)
 
     def __buffered(self, t, l, c):
         buf = None
@@ -345,6 +350,8 @@ class Crossmatch(Blend):
                 buf = chunk
             else:
                 yield chunk
+        if buf is not None and len(buf):
+            yield buf
 
     def __limited(self, t, l, c, limit=None):
         if limit is None:
@@ -352,26 +359,40 @@ class Crossmatch(Blend):
         for i, chunk in enumerate(self.__buffered(t, l, c)):
             if (i * c) + len(chunk) > limit:
                 yield chunk[0:limit - (i * c)]
-                break
+                return
             else:
                 yield chunk
 
     def render(self, chunk_size=None):
         stretch1, stretch2 = self.__limited(self.t1, self.l1, chunk_size),\
                              self.__limited(self.t2, self.l2, chunk_size)
+        total = 0
         for i, (a, b) in enumerate(izip(stretch1, stretch2)):
-            yield crossfade(a, b, '', self.samples, i * chunk_size)\
+            o = min(len(a), len(b))
+            total += o
+            yield crossfade(a[:o], b[:o], '', self.samples, i * chunk_size)\
                     .astype(numpy.int16)
 
+        leftover = self.samples - total
+        if leftover > 0:
+            log.warning("Leftover samples (%d) when crossmatching.", leftover)
+
     def __repr__(self):
-        args = (self.t1.analysis.pyechonest_track.title, self.t2.analysis.pyechonest_track.title)
+        try:
+            args = (self.t1.analysis.pyechonest_track.title,
+                    self.t2.analysis.pyechonest_track.title)
+        except:
+            args = ("?", "?")
         return "<Crossmatch '%s' and '%s'>" % args
 
     def __str__(self):
         # start and end for each of these lists.
         s1, e1 = self.l1[0][0], sum(self.l1[-1])
         s2, e2 = self.l2[0][0], sum(self.l2[-1])
-        n1, n2 = self.t1.analysis.pyechonest_track.title, self.t2.analysis.pyechonest_track.title   # names
+        try:
+            n1, n2 = self.t1.analysis.pyechonest_track.title, self.t2.analysis.pyechonest_track.title   # names
+        except:
+            n1, n2 = "?", "?"
         args = (s1, e2, self.duration, n1, n2)
         return "Crossmatch\t%.3f\t-> %.3f\t (%.3f)\t%s -> %s" % args
 
