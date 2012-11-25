@@ -144,13 +144,6 @@ class Mixer(multiprocessing.Process):
 
         log.info("Grabbing stream...", uid=x.id)
         laf = LocalAudioStream(self.get_stream(x))
-        #   To ensure that we have output,
-        try:
-            #   Read a few samples from the output to ensure
-            #   FFMPEG can read *any* audio for us.
-            assert len(laf[0:100].data) == 100
-        except (IOError, ValueError):
-            raise ValueError("Could not read any samples from FFMPEG!")
         setattr(laf, "_metadata", x)
         Database().ensure(merge(x, laf.analysis))
         return self.process(laf)
