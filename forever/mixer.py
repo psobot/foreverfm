@@ -224,7 +224,7 @@ class Mixer(multiprocessing.Process):
         try:
             self.ctime = None
             for i, actions in enumerate(self.loop()):
-                log.info("Rendering audio data...")
+                log.info("Rendering audio data for %d actions.", len(actions))
                 for a in actions:
                     try:
                         with Timer() as t:
