@@ -173,10 +173,13 @@ class StreamHandler(tornado.web.RequestHandler):
             ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
             ua = self.request.headers.get('User-Agent', None)
             if ua == config.relay_ua or len(self.relays) == 0:
-                port = self.request.headers.get('X-Relay-Port', None)
-                log.info("Added new relay at %s:%s.", ip, port)
+                url = self.request.headers['X-Relay-Addr']
+                if not url.startswith('http://'):
+                    url = "http://" + url
+                port = self.request.headers['X-Relay-Port']
+                log.info("Added new relay at %s:%s.", url, port)
                 self.set_header("Content-Type", "audio/mpeg")
-                self.url = "http://%s:%s/all.mp3" % (ip, port)
+                self.url = "%s:%s/all.mp3" % (url, port)
                 self.relays.append(self)
             else:
                 if not self.relays:
