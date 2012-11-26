@@ -24,7 +24,8 @@
         ) }}' rel='stylesheet' type='text/css' />
 
         <script type="text/javascript"
-                src='https://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js'></script>
+          src='https://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js'></script>
+        {% if open %}
         <script type="text/javascript" src='{{ compiled(
           'spin.min.js',
           'soundmanager2-nodebug-jsmin.js',
@@ -34,6 +35,7 @@
         <script type="text/javascript" src='http://connect.soundcloud.com/sdk.js'></script>
         <script type="text/javascript" src='{{ compiled('socket.io.js') }}'></script>
         <script type="text/javascript" src='{{ compiled('raf.coffee', 'front.coffee') }}'></script>
+        {% end %}
         <script type="text/javascript">
           {% if not debug %}
               var _gaq = _gaq || [];
@@ -117,11 +119,21 @@
       </div>
     </div>
     <div id="content">
+      {% if open %}
       <div class="track_container">
         <div class="tracks" id="tracks"></div>
       </div>
       <canvas id="waveform" height="280px"></canvas>
       <div class="tracks" id="done"></div>
+      {% else %}
+      <div id="message" style="width: 80%; margin: 15% 0 0 15%; text-align: center; font-size: 2em;">
+	  <h1>We're sorry...</h1>
+      <p>
+            Forever.fm is currently <strong>over capacity</strong>.
+            Please check back soon!
+      </p>
+      </div>
+    {% end %}
     </div>
 	</body>
 </html>

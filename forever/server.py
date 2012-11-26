@@ -65,6 +65,7 @@ class MainHandler(tornado.web.RequestHandler):
         kwargs = {
             'debug': debug,
             'compiled': compiled,
+            'open': StreamHandler.relay_count() > 0
         }
         try:
             if os.path.getmtime(config.template_dir + self.template) > self.mtime:
@@ -115,17 +116,22 @@ class InfoHandler(tornado.web.RequestHandler):
 
 class StreamHandler(tornado.web.RequestHandler):
     __subclasses = []
-    listeners = []
+    relays = []
 
+    #   TODO: Get rid of all of this silly stuff
     @classmethod
     def get_queues(cls):
-        return [k.listeners.queue for k in cls.__subclasses]
+        return [k.relays.queue for k in cls.__subclasses]
+
+    @classmethod
+    def relay_count(cls):
+        return sum([len(k.relays) for k in cls.__subclasses])
 
     @classmethod
     def stream_frames(cls):
         for klass in cls.__subclasses:
             try:
-                klass.listeners.broadcast()
+                klass.relays.broadcast()
             except:
                 log.error("Could not broadcast due to: \n%s", traceback.format_exc())
 
@@ -136,7 +142,7 @@ class StreamHandler(tornado.web.RequestHandler):
             klass = type(
                 name + "Handler",
                 (StreamHandler,),
-                {"listeners": Listeners(q, name, first_frame)}
+                {"relays": Listeners(q, name, first_frame)}
             )
             cls.__subclasses.append(klass)
             routes.append((endpoint, klass))
@@ -145,16 +151,18 @@ class StreamHandler(tornado.web.RequestHandler):
     def head(self):
         try:
             ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
-            if len(self.listeners) >= config.relay_limit and \
-                ip not in config.relay_ips:
-                relay = random.choice(config.relays)
-                log.info("Redirected new listener %s to %s", ip, relay)
-                self.redirect(relay)
-            else:
-                log.info("Got HEAD for %s at %s.",
-                        ("relay" if ip in config.relay_ips else "listener"), ip)
+            ua = self.request.headers.get('User-Agent', None)
+            if ua == config.relay_ua or len(self.relays) == 0:
+                log.info("Got HEAD for relay at %s.", ip)
                 self.set_header("Content-Type", "audio/mpeg")
                 self.finish()
+            else:
+                if not self.relays:
+                    tornado.web.RequestHandler.send_error(self, 503)
+                else:
+                    relay = random.choice(self.relays)
+                    log.info("Redirected new listener %s to %s", ip, relay.url)
+                    self.redirect(relay.url)
         except:
             log.error("Error in stream.head:\n%s", traceback.format_exc())
             tornado.web.RequestHandler.send_error(self, 500)
@@ -163,25 +171,29 @@ class StreamHandler(tornado.web.RequestHandler):
     def get(self):
         try:
             ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
-            if len(self.listeners) >= config.relay_limit and \
-                ip not in config.relay_ips:
-                relay = random.choice(config.relays)
-                log.info("Redirected new listener %s to %s", ip, relay)
-                self.redirect(relay)
-            else:
-                log.info("Added new %s at %s",
-                        ("relay" if ip in config.relay_ips else "listener"), ip)
+            ua = self.request.headers.get('User-Agent', None)
+            if ua == config.relay_ua or len(self.relays) == 0:
+                port = self.request.headers.get('X-Relay-Port', None)
+                log.info("Added new relay at %s:%s.", ip, port)
                 self.set_header("Content-Type", "audio/mpeg")
-                self.listeners.append(self)
+                self.url = "http://%s:%s/all.mp3" % (ip, port)
+                self.relays.append(self)
+            else:
+                if not self.relays:
+                    tornado.web.RequestHandler.send_error(self, 503)
+                else:
+                    relay = random.choice(self.relays)
+                    log.info("Redirected new listener %s to %s", ip, relay.url)
+                    self.redirect(relay.url)
         except:
             log.error("Error in stream.get:\n%s", traceback.format_exc())
             tornado.web.RequestHandler.send_error(self, 500)
 
     def on_finish(self):
-        if self in self.listeners:
-            self.listeners.remove(self)
+        if self in self.relays:
+            self.relays.remove(self)
             ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
-            log.info("Removed listener at %s", ip)
+            log.info("Removed relay at %s", ip)
 
 
 class SocketConnection(tornadio2.conn.SocketConnection):
@@ -191,11 +203,11 @@ class SocketConnection(tornadio2.conn.SocketConnection):
     }
 
 
-def get_listeners():
+def get_relays():
     try:
-        return sum([x.listeners for x in StreamHandler._StreamHandler__subclasses], [])
+        return sum([x.relays for x in StreamHandler._StreamHandler__subclasses], [])
     except:
-        log.error("Could not get listeners:\n%s", traceback.format_exc())
+        log.error("Could not get relays:\n%s", traceback.format_exc())
 
 
 if __name__ == "__main__":
@@ -225,13 +237,13 @@ if __name__ == "__main__":
     Hotswap(InfoHandler.add, info, 'generate', info_queue, first_frame).start()
     Hotswap(MonitorSocket.update,
             statistician, 'generate',
-            get_listeners,
+            get_relays,
             mp3_queue=v2_queue).start()
 
     tornado.ioloop.PeriodicCallback(
         lambda: restart.check('restart.txt',
                               started_at_timestamp,
-                              sum([len(x.listeners) for x in StreamHandler._StreamHandler__subclasses])),
+                              sum([len(x.relays) for x in StreamHandler._StreamHandler__subclasses])),
         config.restart_timeout * 1000
     ).start()
     tornado.ioloop.PeriodicCallback(InfoHandler.clean, 5 * 1000).start()
