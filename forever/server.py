@@ -65,7 +65,8 @@ class MainHandler(tornado.web.RequestHandler):
         kwargs = {
             'debug': debug,
             'compiled': compiled,
-            'open': StreamHandler.relay_count() > 0
+            'open': len(StreamHandler.relays) > 0,
+            'endpoint': StreamHandler.relay_url()
         }
         try:
             if os.path.getmtime(config.template_dir + self.template) > self.mtime:
@@ -115,38 +116,27 @@ class InfoHandler(tornado.web.RequestHandler):
 
 
 class StreamHandler(tornado.web.RequestHandler):
-    __subclasses = []
     relays = []
 
-    #   TODO: Get rid of all of this silly stuff
     @classmethod
-    def get_queues(cls):
-        return [k.relays.queue for k in cls.__subclasses]
-
-    @classmethod
-    def relay_count(cls):
-        return sum([len(k.relays) for k in cls.__subclasses])
+    def relay_url(cls):
+        if len(cls.relays):
+            return random.choice(cls.relays).url
+        else:
+            return ""
 
     @classmethod
     def stream_frames(cls):
-        for klass in cls.__subclasses:
-            try:
-                klass.relays.broadcast()
-            except:
-                log.error("Could not broadcast due to: \n%s", traceback.format_exc())
+        try:
+            cls.relays.broadcast()
+        except:
+            log.error("Could not broadcast due to: \n%s", traceback.format_exc())
 
     @classmethod
-    def init_streams(cls, streams):
-        routes = []
-        for endpoint, name, q in streams:
-            klass = type(
-                name + "Handler",
-                (StreamHandler,),
-                {"relays": Listeners(q, name, first_frame)}
-            )
-            cls.__subclasses.append(klass)
-            routes.append((endpoint, klass))
-        return routes
+    def check(cls):
+        #   TODO: This should do HTTP requests to ensure that all relays are
+        #   still up
+        pass
 
     def head(self):
         try:
@@ -160,9 +150,9 @@ class StreamHandler(tornado.web.RequestHandler):
                 if not self.relays:
                     tornado.web.RequestHandler.send_error(self, 503)
                 else:
-                    relay = random.choice(self.relays)
-                    log.info("Redirected new listener %s to %s", ip, relay.url)
-                    self.redirect(relay.url)
+                    relay = self.relay_url()
+                    log.info("Redirected new listener %s to %s", ip, relay)
+                    self.redirect(relay)
         except:
             log.error("Error in stream.head:\n%s", traceback.format_exc())
             tornado.web.RequestHandler.send_error(self, 500)
@@ -185,9 +175,9 @@ class StreamHandler(tornado.web.RequestHandler):
                 if not self.relays:
                     tornado.web.RequestHandler.send_error(self, 503)
                 else:
-                    relay = random.choice(self.relays)
-                    log.info("Redirected new listener %s to %s", ip, relay.url)
-                    self.redirect(relay.url)
+                    relay = self.relay_url()
+                    log.info("Redirected new listener %s to %s", ip, relay)
+                    self.redirect(relay)
         except:
             log.error("Error in stream.get:\n%s", traceback.format_exc())
             tornado.web.RequestHandler.send_error(self, 500)
@@ -204,13 +194,6 @@ class SocketConnection(tornadio2.conn.SocketConnection):
         "/info.websocket": SocketHandler,   #TODO: Rename
         "/monitor.websocket": MonitorSocket
     }
-
-
-def get_relays():
-    try:
-        return sum([x.relays for x in StreamHandler._StreamHandler__subclasses], [])
-    except:
-        log.error("Could not get relays:\n%s", traceback.format_exc())
 
 
 if __name__ == "__main__":
@@ -240,30 +223,32 @@ if __name__ == "__main__":
     Hotswap(InfoHandler.add, info, 'generate', info_queue, first_frame).start()
     Hotswap(MonitorSocket.update,
             statistician, 'generate',
-            get_relays,
+            lambda: StreamHandler.relays,
             mp3_queue=v2_queue).start()
 
     tornado.ioloop.PeriodicCallback(
         lambda: restart.check('restart.txt',
                               started_at_timestamp,
-                              sum([len(x.relays) for x in StreamHandler._StreamHandler__subclasses])),
+                              len(StreamHandler.relays)),
         config.restart_timeout * 1000
     ).start()
     tornado.ioloop.PeriodicCallback(InfoHandler.clean, 5 * 1000).start()
+    tornado.ioloop.PeriodicCallback(StreamHandler.check, 10 * 1000).start()
 
-    stream_routes = StreamHandler.init_streams([
-        (r"/all.mp3", "All", v2_queue)
-    ])
+    StreamHandler.relays = Listeners(v2_queue, "All", first_frame)
 
     application = tornado.web.Application(
         tornadio2.TornadioRouter(SocketConnection).apply_routes([
             # Static assets for local development
             (r"/(favicon.ico)", tornado.web.StaticFileHandler, {"path": "static/img/"}),
             (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": "static/"}),
+
             (r"/all.json", InfoHandler),
+            (r"/all.mp3", StreamHandler),
+
             (r"/monitor", MonitorHandler),
-            (r"/", MainHandler)
-        ] + stream_routes),
+            (r"/", MainHandler),
+        ]),
         socket_io_port=config.socket_port,
         enabled_protocols=['websocket', 'xhr-multipart', 'xhr-polling', 'jsonp-polling']
     )

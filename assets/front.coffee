@@ -330,6 +330,7 @@ $(document).ready ->
   window.__spinner.spin document.getElementById('content')
   window.__spinning = true
   window.__titular = new Titular
+  window.__heartbeat = $('#endpoint_link').attr('href').replace('all.mp3', 'heartbeat')
 
   # MASSIVE HACK
   # Rewrite the URL of the audio stream to the relay server permanently
@@ -367,6 +368,12 @@ $(document).ready ->
     if typeof segment is "string"
       segment = JSON.parse(segment)
     w.process segment, true
+
+  setInterval ->
+    $.ajax
+      url: window.__heartbeat
+      dataType: "jsonp"
+  , (29 * 1000)
 
   $(document).on "click", 'a.like', (e) ->
     e.preventDefault()
