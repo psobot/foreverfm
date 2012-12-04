@@ -167,10 +167,11 @@ class StreamHandler(tornado.web.RequestHandler):
                 if not url.startswith('http://'):
                     url = "http://" + url
                 port = self.request.headers['X-Relay-Port']
-                log.info("Added new relay at %s:%s.", url, port)
+                weight = int(self.request.headers.get('X-Relay-Weight', 1))
+                log.info("Added new relay at %s:%s with weight %d.", url, port, weight)
                 self.set_header("Content-Type", "audio/mpeg")
                 self.url = "%s:%s/all.mp3" % (url, port)
-                for _ in xrange(0, int(self.request.headers.get('X-Relay-Weight', 1))):
+                for _ in xrange(0, weight):
                     self.relays.append(self)
             else:
                 if not self.relays:
@@ -185,10 +186,11 @@ class StreamHandler(tornado.web.RequestHandler):
 
     def on_finish(self):
         if self in self.relays:
+            count = self.relays.count(self)
             while self in self.relays:
                 self.relays.remove(self)
             ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
-            log.info("Removed relay at %s", ip)
+            log.info("Removed relay at %s with weight %d.", ip, count)
 
 
 class SocketConnection(tornadio2.conn.SocketConnection):

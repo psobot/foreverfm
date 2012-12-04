@@ -61,7 +61,7 @@ class Listeners(list):
             if listener.request.connection.stream.closed():
                 try:
                     listener.finish()
-                except (AssertionError, IOError):
+                except (AssertionError, IOError, RuntimeError):
                     self.remove(listener)
             else:
                 listener.write(self.__packet)
