@@ -170,7 +170,8 @@ class StreamHandler(tornado.web.RequestHandler):
                 log.info("Added new relay at %s:%s.", url, port)
                 self.set_header("Content-Type", "audio/mpeg")
                 self.url = "%s:%s/all.mp3" % (url, port)
-                self.relays.append(self)
+                for _ in xrange(0, int(self.request.headers.get('X-Relay-Weight', 1))):
+                    self.relays.append(self)
             else:
                 if not self.relays:
                     tornado.web.RequestHandler.send_error(self, 503)
@@ -184,7 +185,8 @@ class StreamHandler(tornado.web.RequestHandler):
 
     def on_finish(self):
         if self in self.relays:
-            self.relays.remove(self)
+            while self in self.relays:
+                self.relays.remove(self)
             ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
             log.info("Removed relay at %s", ip)
 

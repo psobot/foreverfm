@@ -1,9 +1,20 @@
 html {}
 body {
-  .listeners {
+  font-family: Inconsolata, Consolas, Courier, monospace;
+  .relays {
     padding: 5px 20px;
-    span {
-      display: block;
+    .relay {
+      float: left;
+      width: 400px;
+      border: 1px solid #ccc;
+      padding: 20px;
+      h1 {
+        font-size: 1.6em;
+        margin: 0;
+      }
+      h2 {
+        margin: 0;
+      }
     }
   }
   .queues {

@@ -332,12 +332,6 @@ $(document).ready ->
   window.__titular = new Titular
   window.__heartbeat = $('#endpoint_link').attr('href').replace('all.mp3', 'heartbeat')
 
-  # MASSIVE HACK
-  # Rewrite the URL of the audio stream to the relay server permanently
-  # - can't change server.py while people are listening
-  # $('.ui360 a').attr("href", "http://relay01.forever.fm/all.mp3")
-  # soundManager.reboot()
-
   $('body').keyup (e) ->
     s = window.soundManager.sounds.ui360Sound0
     if e.keyCode == 32
@@ -368,12 +362,6 @@ $(document).ready ->
     if typeof segment is "string"
       segment = JSON.parse(segment)
     w.process segment, true
-
-  setInterval ->
-    $.ajax
-      url: window.__heartbeat
-      dataType: "jsonp"
-  , (29 * 1000)
 
   $(document).on "click", 'a.like', (e) ->
     e.preventDefault()
