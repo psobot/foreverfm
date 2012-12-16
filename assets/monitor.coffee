@@ -29,8 +29,12 @@ class Queue
     @redraw()
 
   redraw: ->
-    @bar.width(((parseInt(@data) / 9187) * 200) + "px")
-    @bar.html(@data)
+    frames = parseInt(@data)
+    @bar.width(((frames / 9187) * 100) + "%")
+    seconds = frames * (1152.0 / 44100.0)
+    minutes = parseInt(seconds / 60)
+    seconds = parseInt(seconds - 60 * minutes)
+    @bar.html("#{minutes}m#{seconds}s")
     @_name.toggleClass('active')
 
 listeners = []
@@ -69,7 +73,7 @@ $(document).ready ->
   s.on 'message', (data) ->
     for l in data.listeners
       id = l['X-Forwarded-For'].replace(/\./g, '')
-      json = "http://forever.fm:8001/?url=" + l['X-Relay-Addr'] + "&callback=?"
+      json = l['X-Relay-Addr'] + "/?callback=?"
       if document.getElementById(id) == null
         $('.relays').append """
           <div class="relay" id="#{id}">
@@ -86,6 +90,18 @@ $(document).ready ->
           </div>
         """
         fetch(json, id)
+
+    $('.info .started span.v'  ).html(new Date(data.info.started * 1000).toISOString())
+
+    if !$('.info .started span.ago').attr('title')?
+      $('.info .started span.ago').attr 'title', new Date(data.info.started * 1000).toISOString()
+      $('.info .started span.ago').timeago()
+    $('.info .samples span.v'  ).html(data.info.samples + " samples")
+    $('.info .samples span.sec'  ).html(Math.round(data.info.samples * 100 / 44100.0) / 100.0)
+    $('.info .duration span.v' ).html(data.info.duration + " seconds")
+    $('.info .duration span.delta' ).html((data.info.duration - (data.info.samples / 44100.0)) + " seconds")
+    $('.info .width span.v'    ).html(data.info.width + "px")
+    $('.info .width span.delta' ).html(((data.info.width / 5.0) - (data.info.samples / 44100.0)) + " seconds")
 
     for k, v of data.queues
       if not (k of Queue.all)
