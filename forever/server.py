@@ -65,8 +65,8 @@ class MainHandler(tornado.web.RequestHandler):
         kwargs = {
             'debug': debug,
             'compiled': compiled,
-            'open': len(StreamHandler.relays) > 0,
-            'endpoint': StreamHandler.relay_url()
+            'open': len(StreamHandler.relays) > 0 or debug,
+            'endpoint': StreamHandler.relay_url() if not debug else "/all.mp3"
         }
         try:
             if os.path.getmtime(config.template_dir + self.template) > self.mtime:
@@ -88,9 +88,19 @@ class MainHandler(tornado.web.RequestHandler):
 
 class InfoHandler(tornado.web.RequestHandler):
     actions = []
+    started = None
+    samples = 0L
+    duration = 0.
+    width = 0L
 
     @classmethod
     def add(self, data):
+        if not self.actions:
+            self.started = time.time()
+        self.samples += data['samples']
+        self.duration += data['duration']
+        self.width += data['width']
+
         self.clean()
         self.actions.append(data)
         SocketHandler.on_data(data)
@@ -104,6 +114,15 @@ class InfoHandler(tornado.web.RequestHandler):
                 cls.actions.pop(0)
         except:
             log.error("Error while cleaning up:\n%s", traceback.format_exc())
+
+    @classmethod
+    def stats(cls):
+        return {
+            "started": cls.started,
+            "samples": cls.samples,
+            "duration": cls.duration,
+            "width": cls.width
+        }
 
     def get(self):
         self.set_header("Content-Type", "application/json")
@@ -121,7 +140,8 @@ class StreamHandler(tornado.web.RequestHandler):
     @classmethod
     def relay_url(cls):
         if len(cls.relays):
-            return random.choice(cls.relays).url
+            choices = [relay for relay in cls.relays for _ in xrange(0, relay.weight)]
+            return random.choice(choices).url
         else:
             return ""
 
@@ -162,19 +182,22 @@ class StreamHandler(tornado.web.RequestHandler):
         try:
             ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
             ua = self.request.headers.get('User-Agent', None)
-            if ua == config.relay_ua or len(self.relays) == 0:
+            if ua == config.relay_ua:
                 url = self.request.headers['X-Relay-Addr']
                 if not url.startswith('http://'):
                     url = "http://" + url
                 port = self.request.headers['X-Relay-Port']
-                weight = int(self.request.headers.get('X-Relay-Weight', 1))
-                log.info("Added new relay at %s:%s with weight %d.", url, port, weight)
+                self.weight = int(self.request.headers.get('X-Relay-Weight', 1))
+                log.info("Added new relay at %s:%s with weight %d.", url, port, self.weight)
                 self.set_header("Content-Type", "audio/mpeg")
                 self.url = "%s:%s/all.mp3" % (url, port)
-                for _ in xrange(0, weight):
-                    self.relays.append(self)
+                self.relays.append(self)
             else:
-                if not self.relays:
+                if self.request.host.startswith("localhost"):
+                    log.info("Added new debug listener at %s:%s.", url, port)
+                    self.set_header("Content-Type", "audio/mpeg")
+                    self.relays.append(self)
+                elif not self.relays:
                     tornado.web.RequestHandler.send_error(self, 503)
                 else:
                     relay = self.relay_url()
@@ -186,11 +209,9 @@ class StreamHandler(tornado.web.RequestHandler):
 
     def on_finish(self):
         if self in self.relays:
-            count = self.relays.count(self)
-            while self in self.relays:
-                self.relays.remove(self)
+            self.relays.remove(self)
             ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
-            log.info("Removed relay at %s with weight %d.", ip, count)
+            log.info("Removed relay at %s with weight %d.", ip, self.weight)
 
 
 class SocketConnection(tornadio2.conn.SocketConnection):
@@ -228,6 +249,7 @@ if __name__ == "__main__":
     Hotswap(MonitorSocket.update,
             statistician, 'generate',
             lambda: StreamHandler.relays,
+            InfoHandler.stats,
             mp3_queue=v2_queue).start()
 
     tornado.ioloop.PeriodicCallback(

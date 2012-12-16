@@ -143,31 +143,39 @@ class Lame(threading.Thread):
 
     def __lame_write(self):
         while not self.finished:
-            data = self.__write_queue.get()
-            if data is None:
-                break
-            if isinstance(data, numpy.ndarray):
-                self.buffered += len(data) / self.channels \
-                                          * (self.input_wordlength / 8)
-                try:
-                    data.tofile(self.lame.stdin)
-                except IOError:
-                    self.finished = True
+            try:
+                data = self.__write_queue.get()
+                if data is None:
                     break
-            else:
-                try:
-                    for chunk in data.render(self.stream_chunk_size):
-                        try:
-                            self.buffered += len(chunk) / self.channels \
-                                             * (self.input_wordlength / 8)
-                            chunk.tofile(self.lame.stdin)
-                        except IOError:
-                            self.finished = True
-                            break
-                except:
-                    log.error("Couldn't render segment due to:\n%s",
-                              traceback.format_exc())
-            self.encode.release()
+                if isinstance(data, numpy.ndarray):
+                    self.buffered += len(data) / self.channels \
+                                            * (self.input_wordlength / 8)
+                    try:
+                        data.tofile(self.lame.stdin)
+                    except IOError:
+                        log.error("Could not write to lame!")
+                        self.finished = True
+                        break
+                else:
+                    try:
+                        for chunk in data.render(self.stream_chunk_size):
+                            try:
+                                self.buffered += len(chunk) / self.channels \
+                                                * (self.input_wordlength / 8)
+                                chunk.tofile(self.lame.stdin)
+                            except IOError:
+                                log.error("Could not write to lame!")
+                                self.finished = True
+                                break
+                    except:
+                        log.error("Couldn't render segment due to:\n%s",
+                                traceback.format_exc())
+            except:
+                log.critical("Failed to write to Lame:\n%s",
+                             traceback.format_exc())
+            finally:
+                self.encode.release()
+        log.critical("Encoder finishing!")
 
     #   TODO: Extend me to work for all samplerates
     def start(self, *args, **kwargs):

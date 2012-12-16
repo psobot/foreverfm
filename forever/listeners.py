@@ -62,7 +62,10 @@ class Listeners(list):
                 try:
                     listener.finish()
                 except (AssertionError, IOError, RuntimeError):
-                    self.remove(listener)
+                    try:
+                        self.remove(listener)
+                    except:
+                        pass
             else:
                 listener.write(self.__packet)
                 listener.flush()

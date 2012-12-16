@@ -212,6 +212,7 @@ class Mixer(multiprocessing.Process):
                 log.error("Exception while trying to add new track:\n%s",
                           traceback.format_exc())
 
+        log.error("Stopping!")
         # Last chunk. Should contain 1 instruction: fadeout.
         yield terminate(self.tracks[-1], FADE_OUT)
 
