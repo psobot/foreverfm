@@ -53,6 +53,9 @@ function ThreeSixtyPlayer() {
   this.vuMeter = null;
   this.callbackCount = 0;
   this.peakDataHistory = [];
+  this.firstBuffering = true;
+  this.firstPlayTime = null;
+  this.bufferDelay = 0;
 
   // 360player configuration options
   this.config = {
@@ -310,6 +313,9 @@ function ThreeSixtyPlayer() {
     // handlers for sound events as they're started/stopped/played
 
     play: function() {
+      if (self.firstBuffering) {
+        self.firstPlayTime = +new Date();
+      }
       pl.removeClass(this._360data.oUIBox,this._360data.className);
       this._360data.className = pl.css.sPlaying;
       pl.addClass(this._360data.oUIBox,this._360data.className);
@@ -364,10 +370,21 @@ function ThreeSixtyPlayer() {
       if (this.isBuffering) {
         pl.addClass(this._360data.oUIBox,pl.css.sBuffering);
       } else {
+        self.events.donebuffering();
         pl.removeClass(this._360data.oUIBox,pl.css.sBuffering);
       }
-    }
+    },
 
+    donebuffering: function() {
+      if (self.firstBuffering) {
+        self.events.donefirstbuffering();
+        self.firstBuffering = false;
+      }
+    },
+
+    donefirstbuffering: function() {
+      self.bufferDelay = (+new Date() - self.firstPlayTime);
+    }
   };
 
   this.stopEvent = function(e) {

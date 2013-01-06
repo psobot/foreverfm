@@ -134,6 +134,12 @@ class InfoHandler(tornado.web.RequestHandler):
             self.write(json.dumps([]))
 
 
+class TimingHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.set_header("Content-Type", "application/json")
+        self.write(json.dumps({"time": time.time() * 1000}, ensure_ascii=False).encode('utf-8'))
+
+
 class StreamHandler(tornado.web.RequestHandler):
     relays = []
 
@@ -194,7 +200,7 @@ class StreamHandler(tornado.web.RequestHandler):
                 self.relays.append(self)
             else:
                 if self.request.host.startswith("localhost"):
-                    log.info("Added new debug listener at %s:%s.", url, port)
+                    log.info("Added new debug listener at %s.", ip)
                     self.set_header("Content-Type", "audio/mpeg")
                     self.relays.append(self)
                 elif not self.relays:
@@ -268,6 +274,8 @@ if __name__ == "__main__":
             # Static assets for local development
             (r"/(favicon.ico)", tornado.web.StaticFileHandler, {"path": "static/img/"}),
             (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": "static/"}),
+
+            (r"/timing.json", TimingHandler),
 
             (r"/all.json", InfoHandler),
             (r"/all.mp3", StreamHandler),

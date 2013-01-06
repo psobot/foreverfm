@@ -7,8 +7,10 @@ window.log = ->
 soundManager.setup
   url: '/static/flash/'
 
+TIMING_INTERVAL = 30000 # ms between checking server ping
 NUM_TRACKS = 5
-MP3_BUFFER = 6  # number of seconds buffered (emperically determined)
+OFFSET = 4
+BUFFERED = OFFSET
 DONE_TRACKS_LIMIT = 4
 MAGIC_REGEX = /(\s*-*\s*((\[|\(|\*|~)[^\)\]]*(mp3|dl|description|free|download|comment|out now|clip|bonus|preview|teaser|in store|follow me|follow on|prod|full|snip|exclusive|beatport|original mix)+[^\)\]]*(\]|\)|\*|~)|((OUT NOW( ON \w*)?|free|download|preview|follow me|follow on|teaser|in store|mp3|dl|description|full|snip|exclusive|beatport|original mix).*$))\s*|\[(.*?)\])/i
 
@@ -114,10 +116,10 @@ class Frame
     """
 
   played: ->
-    (@time + @duration + MP3_BUFFER) < (+new Date / 1000)
+    (@time + @duration + BUFFERED) < (+new Date / 1000)
 
   playing: ->
-    ((@time + MP3_BUFFER) < (+new Date / 1000)) and not @played()
+    ((@time + BUFFERED) < (+new Date / 1000)) and not @played()
 
   intendedParent: ->
     document.getElementById( if @played() then "done" else "tracks" )
@@ -161,12 +163,19 @@ class Waveform
   speed: 5
   constructor: (@canvas) ->
     @delay = 0
-    @offset = $("#menu").outerWidth() + (MP3_BUFFER * @speed)  # Arbitrary - due to MP3 buffering
+    @ping = 0
+    @_offset = $("#menu").outerWidth()
     @frames = []
     @context = @canvas.getContext "2d"
     @overlap = if navigator.userAgent.match(/chrome/i)? then 0 else 1
     @layout()
     @drawloop()
+
+  offset: ->
+    @_offset + @buffered()
+
+  buffered: ->
+    ((window.threeSixtyPlayer.bufferDelay - @ping) * @speed / 1000.0) + OFFSET
 
   layout: ->
     @canvas.width = window.innerWidth
@@ -178,6 +187,7 @@ class Waveform
     setTimeout((-> me.drawloop()), 100)
 
   draw: ->
+    BUFFERED = @buffered()
     if window.soundManager.sounds.ui360Sound0? && window.soundManager.sounds.ui360Sound0.paused
       @paused_at = +new Date unless @paused_at?
       return
@@ -191,7 +201,7 @@ class Waveform
       
       if @frames.length > 1
         for i in [1...@frames.length]
-          if @frames[i].time + MP3_BUFFER > nowtime
+          if @frames[i].time + BUFFERED > nowtime
             frame = @frames[i-1]
             if not @__current_frame? || @__current_frame != frame
               @onCurrentFrameChange @__current_frame, frame
@@ -205,11 +215,11 @@ class Waveform
 
 
       left = (nowtime - @frames[0].time) * @speed * -1
-      while @offset + left + @frames[0].image.width < 0
+      while @offset() + left + @frames[0].image.width < 0
         @frames.splice(0, 1)
         return if not @frames[0]?
         left = (nowtime - @frames[0].time) * @speed * -1
-      right = @offset + left
+      right = @offset() + left
 
       # Actually draw our waveform here
       for frame in @frames
@@ -228,7 +238,7 @@ class Waveform
 
   LIGHTENING: 32
   setPlayerColor: ->
-    pix = @context.getImageData(@offset, parseInt(@canvas.height / 2), 1, @canvas.height).data
+    pix = @context.getImageData(@offset(), parseInt(@canvas.height / 2), 1, @canvas.height).data
     [r, g, b] = [Math.min(pix[0] + @LIGHTENING, 255),
                  Math.min(pix[1] + @LIGHTENING, 255),
                  Math.min(pix[2] + @LIGHTENING, 255)]
@@ -356,6 +366,13 @@ $(document).ready ->
   $.getJSON "all.json", (segments) ->
     for segment in segments
       w.process segment
+
+  setInterval ->
+    start_time = +new Date
+    $.getJSON "timing.json", (data) ->
+      window.log "Ping is #{start_time - data.time}ms."
+      w.ping = data.time - start_time
+  , TIMING_INTERVAL
 
   s = io.connect ":8193/info.websocket"
   s.on 'message', (segment) ->
