@@ -7,6 +7,7 @@ import numpy
 import time
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 
 """
     Quick and dirty, frame-aware MP3 encoding bridge using LAME.
@@ -91,6 +92,7 @@ class Lame(threading.Thread):
 
         self.lame = None
         self.buffered = 0
+        self.lame_input_length = 0
         self.in_samples = 0
         self.out_samples = 0
         self.oqueue = oqueue
@@ -122,7 +124,8 @@ class Lame(threading.Thread):
         """
         if self.lame.returncode is not None:
             return False
-        self.markers.append((self.in_samples, marker))
+        # TODO: Implement me
+        #self.markers.append((self.in_samples, marker))
         self.encode.acquire()
         if isinstance(data, numpy.ndarray):
             samples = len(data)
@@ -158,15 +161,24 @@ class Lame(threading.Thread):
                         break
                 else:
                     try:
+                        log.debug("About to render %d samples. Fed %d samples to LAME thus far.",
+                                    data.samples, self.lame_input_length)
+                        before = self.lame_input_length
                         for chunk in data.render(self.stream_chunk_size):
                             try:
-                                self.buffered += len(chunk) / self.channels \
+                                samples = len(chunk) / self.channels \
                                                 * (self.input_wordlength / 8)
+                                self.buffered += samples
+                                self.lame_input_length += samples
                                 chunk.tofile(self.lame.stdin)
                             except IOError:
                                 log.error("Could not write to lame!")
                                 self.finished = True
                                 break
+                        if before + data.samples != self.lame_input_length:
+                            log.error("Number of samples fed to LAME is not expected value! Missing %d samples.",
+                                      self.lame_input_length - (before + data.samples))
+                        log.debug("Done rendering %d samples!", data.samples)
                     except:
                         log.error("Couldn't render segment due to:\n%s",
                                 traceback.format_exc())
