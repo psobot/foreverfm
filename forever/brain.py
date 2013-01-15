@@ -191,9 +191,9 @@ def generate():
                     try:
                         tracks =  client.get('/tracks', order='hotness', limit=200, offset=0)
                         tracks += client.get('/tracks', order='hotness', limit=200, offset=200)
-                    except HTTPError as h:
+                    except Exception as e:
                         log.warning("Got %s from SoundCloud. Retrying in %2.2f seconds...",
-                                    h, wait)
+                                    e, wait)
                         time.sleep(wait)
 
             log.info("Got %d tracks in %2.2fms.", len(tracks), t.ms)

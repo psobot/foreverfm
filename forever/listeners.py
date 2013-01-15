@@ -1,8 +1,10 @@
+import sys
 import time
 import lame
 import Queue
 import config
 import logging
+from restart import RESTART_EXIT_CODE
 
 LAG_LIMIT = config.lag_limit
 log = logging.getLogger(config.log_name)
@@ -52,7 +54,9 @@ class Listeners(list):
         except Queue.Empty:
             if self.__packet and not self.__starving:
                 self.__starving = True
-                log.warning("Dropping frames! Queue %s is starving!", self.__name)
+                log.critical("Dropping frames! Queue %s is starving!", self.__name)
+                log.critical("Committing suicide.")
+                sys.exit(RESTART_EXIT_CODE)
 
     def __broadcast(self):
         self.__packet = self.queue.get_nowait()
