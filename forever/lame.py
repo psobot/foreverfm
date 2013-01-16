@@ -164,6 +164,8 @@ class Lame(threading.Thread):
                         log.debug("About to render %d samples. Fed %d samples to LAME thus far.",
                                     data.samples, self.lame_input_length)
                         before = self.lame_input_length
+                        if int(data.samples) != data.samples:
+                            log.error("Fractional number of samples to render! (%f)", data.samples)
                         for chunk in data.render(self.stream_chunk_size):
                             try:
                                 samples = len(chunk) / self.channels \
