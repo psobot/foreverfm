@@ -95,6 +95,7 @@ class Lame(threading.Thread):
         self.lame_input_length = 0
         self.in_samples = 0
         self.out_samples = 0
+        self.delta = 0
         self.oqueue = oqueue
         self.syncqueue = syncqueue
         self.ofile = ofile
@@ -163,24 +164,20 @@ class Lame(threading.Thread):
                     try:
                         log.debug("About to render %d samples. Fed %d samples to LAME thus far.",
                                     data.samples, self.lame_input_length)
-                        before = self.lame_input_length
-                        if int(data.samples) != data.samples:
-                            log.error("Fractional number of samples to render! (%f)", data.samples)
+                        tmp = 0
                         for chunk in data.render(self.stream_chunk_size):
                             try:
-                                samples = len(chunk) / self.channels \
-                                                * (self.input_wordlength / 8)
+                                samples = len(chunk)
                                 self.buffered += samples
                                 self.lame_input_length += samples
+                                tmp += samples
                                 chunk.tofile(self.lame.stdin)
                             except IOError:
                                 log.error("Could not write to lame!")
                                 self.finished = True
                                 break
-                        if before + data.samples != self.lame_input_length:
-                            log.error("Number of samples fed to LAME is not expected value! Missing %d samples.",
-                                      self.lame_input_length - (before + data.samples))
-                        log.debug("Done rendering %d samples!", data.samples)
+                        self.delta += tmp - data.samples
+                        log.debug("Current delta: %d samples.", self.delta)
                     except:
                         log.error("Couldn't render segment due to:\n%s",
                                 traceback.format_exc())
@@ -244,9 +241,9 @@ class Lame(threading.Thread):
                         self.ofile.flush()
                     if self.callback:
                         self.callback(False)
-                    if self.syncqueue and \
-                       self.markers and self.markers[0][0] < self.out_samples:
-                        self.syncqueue.put(self.markers.pop(0)[1])
+                    #if self.syncqueue and \
+                    #   self.markers and self.markers[0][0] < self.out_samples:
+                    #    self.syncqueue.put(self.markers.pop(0)[1])
                     if self.oqueue:
                         self.oqueue.put(buf)
                     if self.real_time and self.sent:

@@ -63,7 +63,7 @@ def get_enremix():
 
 
 def get_nodejs():
-    ensure_installed('node')
+    ensure_installed('nodejs')
 
 
 def get_pil_dependencies():

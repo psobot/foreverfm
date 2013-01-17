@@ -1,7 +1,7 @@
+import Image
 import urllib2
 import logging
 import cStringIO
-from PIL import Image
 from timer import Timer
 
 
