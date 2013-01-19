@@ -9,9 +9,12 @@ soundManager.setup
 
 TIMING_INTERVAL = 30000 # ms between checking server ping
 NUM_TRACKS = 5
-OFFSET = 4
+
+#   Empirical.
+OFFSET = 2
 BUFFERED = OFFSET
-DONE_TRACKS_LIMIT = 4
+
+DONE_TRACKS_LIMIT = 8
 MAGIC_REGEX = /(\s*-*\s*((\[|\(|\*|~)[^\)\]]*(mp3|dl|description|free|download|comment|out now|clip|bonus|preview|teaser|in store|follow me|follow on|prod|full|snip|exclusive|beatport|original mix)+[^\)\]]*(\]|\)|\*|~)|((OUT NOW( ON \w*)?|free|download|preview|follow me|follow on|teaser|in store|mp3|dl|description|full|snip|exclusive|beatport|original mix).*$))\s*|\[(.*?)\])/i
 
 comma = (x) ->
@@ -372,7 +375,6 @@ $(document).ready ->
   getPing = ->
     start_time = +new Date
     $.getJSON "timing.json", (data) ->
-      window.log "Delta is #{start_time - data.time}ms."
       window.ping = data.time - start_time
   window.getPing = getPing
   setInterval getPing, TIMING_INTERVAL
