@@ -12,6 +12,7 @@ from timer import Timer
 from requests import HTTPError
 from database import Database
 
+
 log = logging.getLogger(__name__)
 test = 'test' in sys.argv
 client = soundcloud.Client(client_id=apikeys.SOUNDCLOUD_CLIENT_KEY)
@@ -175,6 +176,48 @@ def cull(tracks):
     return tracks
 
 
+def get_immediate_tracks(db):
+    try:
+        success = False
+        for track in open(config.immediate_track_list):
+            try:
+                res = client.get('/tracks/%d' % int(track))
+                for criterion in criteria:
+                    criterion.precompute(res)
+                res = db.merge(res)
+                for criterion in criteria:
+                    criterion.postcompute(res)
+                success = True
+                yield res
+            except Exception as e:
+                log.warning("Couldn't add immediate track \"%s\" due to %s!",
+                            track, e)
+        if success:
+            tracklist = open(config.immediate_track_list, 'w')
+            tracklist.write("")
+            tracklist.close()
+    except Exception as e:
+        log.error("Got %s when trying to fetch immediate tracks!", e)
+        yield []
+
+
+def get_force_mix_tracks(db):
+    try:
+        for track in open(config.force_mix_track_list):
+            try:
+                res = client.get('/tracks/%d' % int(track))
+                for criterion in criteria:
+                    criterion.precompute(res)
+                res = db.merge(res)
+                yield res
+            except Exception as e:
+                log.warning("Couldn't add forced track \"%s\" due to %s!",
+                            track, e)
+    except Exception as e:
+        log.error("Got %s when trying to fetch forced tracks!", e)
+        yield []
+
+
 def generate():
     try:
         tracks = []
@@ -202,6 +245,8 @@ def generate():
                 tracks.append(last[-1])
             tracks = cull(tracks)
 
+            tracks += list(get_force_mix_tracks(d))
+
             try:
                 tracks = [d.merge(t) for t in tracks]
             except:
@@ -221,6 +266,8 @@ def generate():
                 tracks = tracks[i:] + tracks[:i]
 
             for track in tracks:
+                for priority in get_immediate_tracks(d):
+                    yield priority
                 yield track
 
             last = tracks
