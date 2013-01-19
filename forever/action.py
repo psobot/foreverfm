@@ -328,10 +328,15 @@ class Crossmatch(Blend):
             rate = (int(l[i][0] * t.sampleRate) - signal_start,
                     self.durations[i] / l[i][1])
             rates.append(rate)
+
+        #   In case the for loop never runs due to too few elements.
+        e = int(rates[-1][0] + signal_start)
+
         for i, ((s1, r1), (s2, r2)) in enumerate(izip(rates, rates[1:])):
             s = int(s1 + signal_start)
             e = int(s2 + signal_start)
             yield self.g(t[s:e].data, gain, r1)
+
         end = signal_start + int((sum(l[-1]) - l[0][0]) * t.sampleRate)
         yield self.g(t[e:end].data, gain, r2)
 
