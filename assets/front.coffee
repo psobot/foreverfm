@@ -367,12 +367,14 @@ $(document).ready ->
     for segment in segments
       w.process segment
 
-  setInterval ->
+  getPing = ->
     start_time = +new Date
     $.getJSON "timing.json", (data) ->
       window.log "Ping is #{start_time - data.time}ms."
       w.ping = data.time - start_time
-  , TIMING_INTERVAL
+  window.getPing = getPing
+  setInterval getPing, TIMING_INTERVAL
+  getPing()
 
   s = io.connect ":8193/info.websocket"
   s.on 'message', (segment) ->
