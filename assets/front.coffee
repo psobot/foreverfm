@@ -17,6 +17,9 @@ MAGIC_REGEX = /(\s*-*\s*((\[|\(|\*|~)[^\)\]]*(mp3|dl|description|free|download|c
 comma = (x) ->
   if x? then x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') else x
 
+window.ping = 0
+window.serverTime = -> (+new Date) - window.ping
+
 class Frame
   constructor: (init, is_new) ->
     for k, v of init
@@ -116,10 +119,10 @@ class Frame
     """
 
   played: ->
-    (@time + @duration + BUFFERED) < (+new Date / 1000)
+    (@time + @duration + BUFFERED) < (window.serverTime() / 1000)
 
   playing: ->
-    ((@time + BUFFERED) < (+new Date / 1000)) and not @played()
+    ((@time + BUFFERED) < (window.serverTime() / 1000)) and not @played()
 
   intendedParent: ->
     document.getElementById( if @played() then "done" else "tracks" )
@@ -163,7 +166,6 @@ class Waveform
   speed: 5
   constructor: (@canvas) ->
     @delay = 0
-    @ping = 0
     @_offset = $("#menu").outerWidth()
     @frames = []
     @context = @canvas.getContext "2d"
@@ -175,7 +177,7 @@ class Waveform
     @_offset + @buffered()
 
   buffered: ->
-    ((window.threeSixtyPlayer.bufferDelay - @ping) * @speed / 1000.0) + OFFSET
+    ((window.threeSixtyPlayer.bufferDelay) * @speed / 1000.0) + OFFSET
 
   layout: ->
     @canvas.width = window.innerWidth
@@ -189,15 +191,15 @@ class Waveform
   draw: ->
     BUFFERED = @buffered()
     if window.soundManager.sounds.ui360Sound0? && window.soundManager.sounds.ui360Sound0.paused
-      @paused_at = +new Date unless @paused_at?
+      @paused_at = window.serverTime() unless @paused_at?
       return
     else if @paused_at?
-      @delay += (+new Date - @paused_at)
+      @delay += (window.serverTime() - @paused_at)
       delete @paused_at
 
     if @frames[0]?
       @context.clearRect 0, 0, @canvas.width, @canvas.height
-      nowtime = (+new Date - @delay) / 1000
+      nowtime = (window.serverTime() - @delay) / 1000
       
       if @frames.length > 1
         for i in [1...@frames.length]
@@ -370,8 +372,8 @@ $(document).ready ->
   getPing = ->
     start_time = +new Date
     $.getJSON "timing.json", (data) ->
-      window.log "Ping is #{start_time - data.time}ms."
-      w.ping = data.time - start_time
+      window.log "Delta is #{start_time - data.time}ms."
+      window.ping = data.time - start_time
   window.getPing = getPing
   setInterval getPing, TIMING_INTERVAL
   getPing()
