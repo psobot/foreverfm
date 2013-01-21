@@ -234,6 +234,12 @@ class Lame(threading.Thread):
                 else:
                     buf = header
 
+                #   More debug logging
+                if not self.lame_input_length % 4192:
+                    log.debug("Current LAME buffer len: %d samples (%f secs)",
+                              self.buffered,
+                              float(self.buffered) / float(self.samplerate))
+
                 if self.buffered < (self.safety_buffer * self.samplerate):
                     self.ready.release()
                 if len(buf):
