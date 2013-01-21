@@ -12,6 +12,7 @@ import os
 import sys
 import json
 import lame
+import copy
 import time
 import info
 import random
@@ -127,7 +128,20 @@ class InfoHandler(tornado.web.RequestHandler):
     def get(self):
         self.set_header("Content-Type", "application/json")
         try:
-            self.write(json.dumps(self.actions, ensure_ascii=False).encode('utf-8'))
+            now = self.get_argument('now', None)
+            if now:
+                now = time.time()
+                for _action in self.actions:
+                    if _action['time'] < now \
+                    and _action['time'] + _action['duration'] > now:
+                        action = copy.copy(_action)
+                        del action['waveform']
+                        self.write(json.dumps({'frame': action, 'now': now},
+                                   ensure_ascii=False).encode('utf-8'))
+                        return
+                self.write(json.dumps([]))
+            else:
+                self.write(json.dumps(self.actions, ensure_ascii=False).encode('utf-8'))
         except:
             log.error("Could not send info burst:\n%s", traceback.format_exc())
             log.error("Data:\n%s", self.actions)

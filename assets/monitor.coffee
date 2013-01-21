@@ -72,24 +72,25 @@ $(document).ready ->
   s = io.connect ":8193/monitor.websocket"
   s.on 'message', (data) ->
     for l in data.listeners
-      id = l['X-Forwarded-For'].replace(/\./g, '')
-      json = l['X-Relay-Addr'] + "/?callback=?"
-      if document.getElementById(id) == null
-        $('.relays').append """
-          <div class="relay" id="#{id}">
-            <h1 class="url"></h1>  
-            <h2 class="location"></h2>
-            <div>Started: <span class="started"></span></div>
-            <div><span class="listeners"></span> listeners</div>
-            <div><span class="bytes_out_month"></span> sent this month</div>
-            <div><span class="bytes_in_month"></span> rec'd this month</div>
-            <div><br /></div>
-            <div><span class="peak_listeners"></span> listeners (at peak)</div>
-            <div><span class="peak_bytes_out_month"></span> sent (at peak month)</div>
-            <div style="clear: both"></div>
-          </div>
-        """
-        fetch(json, id)
+      if 'X-Forwarded-For' in l
+        id = l['X-Forwarded-For'].replace(/\./g, '')
+        json = l['X-Relay-Addr'] + "/?callback=?"
+        if document.getElementById(id) == null
+          $('.relays').append """
+            <div class="relay" id="#{id}">
+              <h1 class="url"></h1>  
+              <h2 class="location"></h2>
+              <div>Started: <span class="started"></span></div>
+              <div><span class="listeners"></span> listeners</div>
+              <div><span class="bytes_out_month"></span> sent this month</div>
+              <div><span class="bytes_in_month"></span> rec'd this month</div>
+              <div><br /></div>
+              <div><span class="peak_listeners"></span> listeners (at peak)</div>
+              <div><span class="peak_bytes_out_month"></span> sent (at peak month)</div>
+              <div style="clear: both"></div>
+            </div>
+          """
+          fetch(json, id)
 
     $('.info .started span.v'  ).html(new Date(data.info.started * 1000).toISOString())
 
