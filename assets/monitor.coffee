@@ -72,7 +72,7 @@ $(document).ready ->
   s = io.connect ":8193/monitor.websocket"
   s.on 'message', (data) ->
     for l in data.listeners
-      if 'X-Forwarded-For' in l
+      if 'X-Forwarded-For' of l
         id = l['X-Forwarded-For'].replace(/\./g, '')
         json = l['X-Relay-Addr'] + "/?callback=?"
         if document.getElementById(id) == null
