@@ -8,6 +8,7 @@ from restart import RESTART_EXIT_CODE
 
 LAG_LIMIT = config.lag_limit
 log = logging.getLogger(config.log_name)
+log.setLevel(logging.DEBUG)
 
 
 class Listeners(list):
@@ -16,7 +17,9 @@ class Listeners(list):
         self.__name = name
         self.__packet = None
         self.__last_send = None
+        self.__first_send = None
         self.__lag = 0
+        self.__count = 0L
         self.__semaphore = semaphore
         list.__init__(self)
 
@@ -39,6 +42,7 @@ class Listeners(list):
                                 - lame.SAMPLES_PER_FRAME
             else:
                 log.info("Sending first frame for %s.", self.__name)
+                self.__first_send = time.time()
                 self.__semaphore.release()
 
             if self.__lag > 0:
@@ -51,6 +55,14 @@ class Listeners(list):
                             self.__name, (self.__lag *  -1000.0 / 44100.0))
 
             self.__last_send = time.time()
+
+            if self.__count > 0 and not self.__count % 2296:
+                now = time.time()
+                uptime = float(now - self.__first_send)
+                duration = float(self.__count) * 1152.0 / 44100.0
+                log.debug("Sent %d frames (%dsam, %fs) over %fs (%fx).",
+                          self.__count, self.__count * 1152, duration, uptime,
+                          duration / uptime)
         except Queue.Empty:
             if self.__packet and not self.__starving:
                 self.__starving = True
@@ -60,6 +72,7 @@ class Listeners(list):
 
     def __broadcast(self):
         self.__packet = self.queue.get_nowait()
+        self.__count += 1
         self.__starving = False
         for i, listener in enumerate(list(self)):
             if listener.request.connection.stream.closed():
