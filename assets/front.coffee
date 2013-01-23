@@ -11,7 +11,7 @@ TIMING_INTERVAL = 30000 # ms between checking server ping
 NUM_TRACKS = 5
 
 #   Empirical.
-OFFSET = 2
+OFFSET = 3
 BUFFERED = OFFSET
 
 DONE_TRACKS_LIMIT = 8
@@ -375,7 +375,7 @@ $(document).ready ->
   getPing = ->
     start_time = +new Date
     $.getJSON "timing.json", (data) ->
-      window.ping = data.time - start_time
+      window.ping = start_time - data.time
   window.getPing = getPing
   setInterval getPing, TIMING_INTERVAL
   getPing()
