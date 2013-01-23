@@ -20,6 +20,7 @@ class Listeners(list):
         self.__first_send = None
         self.__lag = 0
         self.__count = 0L
+        self.__drift_limit = config.drift_limit
         self.__semaphore = semaphore
         list.__init__(self)
 
@@ -31,6 +32,7 @@ class Listeners(list):
 
     def broadcast(self):
         try:
+            now = time.time()
             if self.__lag > LAG_LIMIT:
                 log.error("Lag (%s) exceeds limit - dropping frames!",
                           self.__lag)
@@ -38,7 +40,7 @@ class Listeners(list):
 
             self.__broadcast()
             if self.__last_send:
-                self.__lag += int((time.time() - self.__last_send) * 44100)\
+                self.__lag += int((now - self.__last_send) * 44100)\
                                 - lame.SAMPLES_PER_FRAME
             else:
                 log.info("Sending first frame for %s.", self.__name)
@@ -56,13 +58,22 @@ class Listeners(list):
 
             self.__last_send = time.time()
 
+            uptime = float(now - self.__first_send)
             if self.__count > 0 and not self.__count % 2296:
-                now = time.time()
-                uptime = float(now - self.__first_send)
                 duration = float(self.__count) * 1152.0 / 44100.0
                 log.debug("Sent %d frames (%dsam, %fs) over %fs (%fx).",
                           self.__count, self.__count * 1152, duration, uptime,
                           duration / uptime)
+
+            if (float(self.__count) * 1152.0 / 44100.0) \
+                    + self.__drift_limit < uptime:
+                log.warning("Queue %s drifting by %2.2f ms. Compensating...",
+                    self.__name,
+                    1000 * (uptime - (float(self.__count) * 1152.0 / 44100.0))
+                )
+                while (float(self.__count) * 1152.0 / 44100.0) < uptime:
+                    self.__broadcast()
+
         except Queue.Empty:
             if self.__packet and not self.__starving:
                 self.__starving = True
