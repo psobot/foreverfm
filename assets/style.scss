@@ -1,4 +1,7 @@
+$min_height = 470px;
+
 html { width: 100%; position: relative; height: 100%; }
+
 body {
   padding: 0;
   margin: 0;
@@ -7,6 +10,7 @@ body {
   font-weight: 300;
   width: 100%;
   overflow-x: hidden;
+  min-height: $min_height;
 
   a#banner {
     position: fixed;
@@ -148,17 +152,23 @@ body {
   #menu {
     background: rgba(1.0, 1.0, 1.0, 0.55);
     width: 284px;
-    position: fixed;
+    position: absolute;
     top: 0;
     left: 0;
     bottom: 0;
     z-index: 5;
+    min-height: $min_height;
     
     #logo {
       height: 250px;
       width: 250px;
       margin: 23px auto 6px;
-      background: url(/static/img/logo.png) no-repeat top center;  // 246 px high
+      background: url(/static/img/logo.png) no-repeat bottom center;  // 246 px high
+
+      -webkit-transition: height 0.5s ease-in-out;
+      -moz-transition:    height 0.5s ease-in-out;
+      -o-transition:      height 0.5s ease-in-out;
+      transition:         height 0.5s ease-in-out;
     }
 
     h1 {
@@ -167,8 +177,17 @@ body {
 
       margin: 0 auto 0px;
       font-size: 54px;
+      height: 67px;
 
       text-transform: lowercase;
+      display: block;
+      opacity: 1;
+      overflow: hidden;
+
+      -webkit-transition: height 0.5s ease-in-out, opacity 0.5s ease-in-out;
+      -moz-transition:    height 0.5s ease-in-out, opacity 0.5s ease-in-out;
+      -o-transition:      height 0.5s ease-in-out, opacity 0.5s ease-in-out;
+      transition:         height 0.5s ease-in-out, opacity 0.5s ease-in-out;
     }
 
     h2 {
@@ -178,6 +197,14 @@ body {
       font-size: 35px;
       margin: -20px 0 0 0;
       text-transform: lowercase;
+      overflow: hidden;
+      height: 40px;
+      opacity: 1;
+
+      -webkit-transition: height 0.5s ease-in-out, opacity 0.5s ease-in-out;
+      -moz-transition:    height 0.5s ease-in-out, opacity 0.5s ease-in-out;
+      -o-transition:      height 0.5s ease-in-out, opacity 0.5s ease-in-out;
+      transition:         height 0.5s ease-in-out, opacity 0.5s ease-in-out;
     }
 
     #social {
@@ -203,6 +230,7 @@ body {
       width: 256px;
       margin: 29px 22px 4px;
       overflow: hidden;
+      z-index: 5;
     }
 
     #footer {
@@ -210,7 +238,10 @@ body {
       color: #ccc;
       width: 100%;
       position: absolute;
-      bottom: 20px;
+      background: rgba(255, 255, 255, 0.75);
+      bottom: 0;
+      padding: 15px 0;
+      z-index: 125;
 
       a {
         text-decoration: none;
@@ -292,6 +323,12 @@ body {
     .track_container {
       position: relative;
       height: 450px;
+
+      -webkit-transition: height 0.5s ease-in-out, opacity 0.5s ease-in-out;
+      -moz-transition:    height 0.5s ease-in-out, opacity 0.5s ease-in-out;
+      -o-transition:      height 0.5s ease-in-out, opacity 0.5s ease-in-out;
+      transition:         height 0.5s ease-in-out, opacity 0.5s ease-in-out;
+
     }
 
     .tracks {
@@ -476,7 +513,7 @@ body {
           opacity: 1;
         }
       }
-              
+
       .track.hidden, .track.ending {
         height: 0;
         opacity: 0;
@@ -492,6 +529,11 @@ body {
       right: 0;
       overflow: hidden;
       padding: 0 0 20px 40px;
+
+      -webkit-transition:   top 0.5s ease-in-out;
+      -moz-transition:      top 0.5s ease-in-out;
+      -o-transition:        top 0.5s ease-in-out;
+      transition:           top 0.5s ease-in-out;
 
       .track {
         display: none;
@@ -514,9 +556,105 @@ body {
 
     #waveform {
       position: absolute;
-      top: 420px;
+      top: 409px;
       left: 0;
       height: 280px;
+
+      -webkit-transition:   top 0.5s ease-in-out;
+      -moz-transition:      top 0.5s ease-in-out;
+      -o-transition:        top 0.5s ease-in-out;
+      transition:           top 0.5s ease-in-out;
+    }
+}
+
+@media (max-height: 700px) {
+  body {
+    #menu {
+      #logo {
+        height: 169px;
+      }
+    }
+    #content {
+      .track_container {
+        height: 450px - 40px - (60px * 1);
+        .tracks#tracks  {
+          .track:nth-last-child(5) {
+            opacity: 0;
+            height: 0;
+          }
+        }
+      }
+      #waveform {
+        top: 407px - 20px - (60px * 1);
+      }
+      .tracks#done {
+        top: 710px - 20px - (60px * 1);
+        @for $i from 2 through 5 {
+          .track:nth-child($i) {
+            opacity: 0;
+            height: 0;
+          }
+        }
+      }
+    }
+  }
+}
+
+@media (max-height: 600px) {
+  body {
+    #menu {
+      h2 {
+        height: 0;
+        opacity: 0;
+      }
+      #player {
+        margin-top: 12px;
+      }
+    }
+    #content {
+      .track_container {
+        height: 450px - 40px - (61px * 2);
+        .tracks#tracks  {
+          .track:nth-last-child(4) {
+            opacity: 0;
+            height: 0;
+          }
+        }
+      }
+      #waveform {
+        top: 409px - 20px - (62px * 2);
+      }
+      .tracks#done {
+        top: 710px - 20px - (62px * 2);
+      }
+    }
+  }
+}
+
+@media (max-height: 500px) {
+  body {
+    #menu {
+      h1 {
+        height: 0;
+        opacity: 0;
+      }
+    }
+    #content {
+      .track_container {
+        height: 450px - 40px - (61px * 3);
+        .tracks#tracks  {
+          .track:nth-last-child(3) {
+            opacity: 0;
+            height: 0;
+          }
+        }
+      }
+      #waveform {
+        top: 409px - 20px - (62px * 3);
+      }
+      .tracks#done {
+        top: 710px - 20px - (62px * 3);
+      }
     }
   }
 }

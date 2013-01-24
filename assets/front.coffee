@@ -11,7 +11,7 @@ TIMING_INTERVAL = 30000 # ms between checking server ping
 NUM_TRACKS = 5
 
 #   Empirical.
-OFFSET = 3
+OFFSET = 5
 BUFFERED = OFFSET
 
 DONE_TRACKS_LIMIT = 8
