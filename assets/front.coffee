@@ -14,6 +14,8 @@ NUM_TRACKS = 5
 OFFSET = 5
 BUFFERED = OFFSET
 
+MIN_LISTENERS = 30
+
 DONE_TRACKS_LIMIT = 8
 MAGIC_REGEX = /(\s*-*\s*((\[|\(|\*|~)[^\)\]]*(mp3|dl|description|free|download|comment|out now|clip|bonus|preview|teaser|in store|follow me|follow on|prod|full|snip|exclusive|beatport|original mix)+[^\)\]]*(\]|\)|\*|~)|((OUT NOW( ON \w*)?|free|download|preview|follow me|follow on|teaser|in store|mp3|dl|description|full|snip|exclusive|beatport|original mix).*$))\s*|\[(.*?)\])/i
 
@@ -340,10 +342,52 @@ class Titular
     @rotation += 1
     r
 
-update_listener_count = (count) ->
-  window.log "Now at #{count} listeners."
+window.replace_h2 = (tag, text) ->
+  return if tag.html() == text
+  tag.css 'opacity', 0
+  setTimeout ->
+    tag.html(text)
+    tag.css 'opacity', 1
+  , 500
+
+
+format_uptime = (seconds) ->
+  hours = Math.round(seconds / 3600)
+  return "#{hours} hour#{if hours == 1 then '' else 's'}" if hours < 24
+  days = Math.round(seconds / 86400)
+  return "#{days} day#{if days == 1 then '' else 's'}" if days < 7
+  weeks = Math.round(seconds / 604800)
+  return "#{weeks} week#{if weeks == 1 then '' else 's'}" if weeks < 4
+  months = Math.round(seconds / 2419200)
+  return "#{months} month#{if months == 1 then '' else 's'}" if months < 12
+  years = Math.round(seconds / 29030400)
+  return "#{years} year#{if years == 1 then '' else 's'}"
+
+window.rotate_h2 = ->
+  tag = $('h2')
+  window.__original_h2 = tag.html() if not window.__original_h2?
+  setInterval ->
+    toggle = tag.data('toggle')
+    if toggle?
+      switch toggle
+        when 0
+          window.replace_h2 tag, window.__original_h2
+        when 1
+          if window._listeners? and window._listeners > MIN_LISTENERS
+            window.replace_h2 tag, "#{window._listeners} listeners"
+        when 2
+          if window._started_at?
+            uptime = ((+new Date) / 1000) - window._started_at
+            if uptime > 86400
+              window.replace_h2 tag, "up for #{format_uptime uptime}"
+    else
+      toggle = 0
+    toggle = (toggle + 1) % 3
+    tag.data('toggle', toggle)
+  , 5000
 
 $(document).ready ->
+  window.rotate_h2()
   window.__spinner.spin document.getElementById('content')
   window.__spinning = true
   window.__titular = new Titular
@@ -389,7 +433,7 @@ $(document).ready ->
     if data.segment?
       w.process data.segment, true
     else if data.listener_count?
-      update_listener_count data.listener_count
+      window._listeners = data.listener_count
 
   $(document).on "click", 'a.like', (e) ->
     e.preventDefault()
