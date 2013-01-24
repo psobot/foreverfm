@@ -11,9 +11,29 @@ class SocketHandler(tornadio2.conn.SocketConnection):
     listeners = set()
 
     @classmethod
-    def on_data(self, data):
+    def on_segment(self, data):
         try:
-            data = json.dumps(data, ensure_ascii=False).encode('utf-8')
+            data = json.dumps({"segment": data},
+                              ensure_ascii=False).encode('utf-8')
+            if self.listeners:
+                for i, l in enumerate(self.listeners.copy()):
+                    try:
+                        l.send(data)
+                    except:
+                        log.error(
+                            "Failed to send data to socket %d due to:\n%s",
+                            i, traceback.format_exc()
+                        )
+                        self.listeners.remove(l)
+        except:
+            log.error("Could not update sockets due to:\n%s",
+                      traceback.format_exc())
+
+    @classmethod
+    def on_listener_change(self, mp3_listeners):
+        try:
+            data = json.dumps({"listener_count": len(mp3_listeners)},
+                              ensure_ascii=False).encode('utf-8')
             if self.listeners:
                 for i, l in enumerate(self.listeners.copy()):
                     try:

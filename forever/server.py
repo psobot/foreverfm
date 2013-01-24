@@ -104,7 +104,7 @@ class InfoHandler(tornado.web.RequestHandler):
 
         self.clean()
         self.actions.append(data)
-        SocketHandler.on_data(data)
+        SocketHandler.on_segment(data)
 
     @classmethod
     def clean(cls):
@@ -156,10 +156,13 @@ class TimingHandler(tornado.web.RequestHandler):
 
 class StreamHandler(tornado.web.RequestHandler):
     relays = []
+    listeners = []
 
     @classmethod
     def relay_url(cls):
-        if len(cls.relays):
+        if len(cls.relays) == 1:
+            return cls.relays[0]
+        elif len(cls.relays) > 1:
             choices = [relay for relay in cls.relays for _ in xrange(0, relay.weight)]
             return random.choice(choices).url
         else:
@@ -223,6 +226,39 @@ class StreamHandler(tornado.web.RequestHandler):
                     relay = self.relay_url()
                     log.info("Redirected new listener %s to %s", ip, relay)
                     self.redirect(relay)
+        except:
+            log.error("Error in stream.get:\n%s", traceback.format_exc())
+            tornado.web.RequestHandler.send_error(self, 500)
+
+    def post(self):
+        try:
+            ua = self.request.headers.get('User-Agent', None)
+            if ua == config.relay_ua:
+                url = self.request.headers['X-Relay-Addr']
+                if not url.startswith('http://'):
+                    url = "http://" + url
+                port = self.request.headers['X-Relay-Port']
+                action = self.get_argument('action')
+                ip = self.get_argument('listener_ip')
+
+                if action == "add":
+                    log.info("Added listener at %s through %s:%s.",
+                             ip, url, port)
+                    self.listeners.append({
+                        "ip": ip,
+                        "connected_at": time.time(),
+                        "relay": url,
+                    })
+                elif action == "remove":
+                    listener = next(x for x in self.listeners if x['ip'] == ip)
+                    self.listeners.remove(listener)
+                    log.info("Removed listener at %s through %s:%s.",
+                             ip, url, port)
+                else:
+                    raise NotImplementedError()
+                SocketHandler.on_listener_change(self.listeners)
+            else:
+                tornado.web.RequestHandler.send_error(self, 403)
         except:
             log.error("Error in stream.get:\n%s", traceback.format_exc())
             tornado.web.RequestHandler.send_error(self, 500)

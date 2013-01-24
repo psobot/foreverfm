@@ -340,6 +340,8 @@ class Titular
     @rotation += 1
     r
 
+update_listener_count = (count) ->
+  window.log "Now at #{count} listeners."
 
 $(document).ready ->
   window.__spinner.spin document.getElementById('content')
@@ -381,10 +383,13 @@ $(document).ready ->
   getPing()
 
   s = io.connect ":8193/info.websocket"
-  s.on 'message', (segment) ->
-    if typeof segment is "string"
-      segment = JSON.parse(segment)
-    w.process segment, true
+  s.on 'message', (data) ->
+    if typeof data is "string"
+      data = JSON.parse(data)
+    if data.segment?
+      w.process data.segment, true
+    else if data.listener_count?
+      update_listener_count data.listener_count
 
   $(document).on "click", 'a.like', (e) ->
     e.preventDefault()
