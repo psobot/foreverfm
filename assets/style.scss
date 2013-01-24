@@ -530,6 +530,11 @@ body {
       overflow: hidden;
       padding: 0 0 20px 40px;
 
+      -webkit-transition:   top 0.5s ease-in-out;
+      -moz-transition:      top 0.5s ease-in-out;
+      -o-transition:        top 0.5s ease-in-out;
+      transition:           top 0.5s ease-in-out;
+
       .track {
         display: none;
       }
@@ -583,6 +588,7 @@ body {
         top: 407px - 20px - (60px * 1);
       }
       .tracks#done {
+        top: 710px - 20px - (60px * 1);
         @for $i from 2 through 5 {
           .track:nth-child($i) {
             opacity: 0;
@@ -618,6 +624,9 @@ body {
       #waveform {
         top: 409px - 20px - (62px * 2);
       }
+      .tracks#done {
+        top: 710px - 20px - (62px * 2);
+      }
     }
   }
 }
@@ -642,6 +651,9 @@ body {
       }
       #waveform {
         top: 409px - 20px - (62px * 3);
+      }
+      .tracks#done {
+        top: 710px - 20px - (62px * 3);
       }
     }
   }
