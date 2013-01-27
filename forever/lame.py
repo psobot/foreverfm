@@ -5,6 +5,7 @@ import traceback
 import logging
 import numpy
 import time
+from cube import emit
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -178,6 +179,7 @@ class Lame(threading.Thread):
                         log.debug("Current delta: %d samples.", self.delta)
                         #   Note: this delta will cause drift of 1 second/month.
                         #   TODO: Fix it. Eventually.
+                        emit('lame_delta', {"samples": self.delta})
                     except:
                         log.error("Couldn't render segment due to:\n%s",
                                 traceback.format_exc())

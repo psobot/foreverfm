@@ -28,6 +28,7 @@ import tornadio2.server
 import multiprocessing
 import pyechonest.config
 
+from cube import emit
 from mixer import Mixer
 from daemon import Daemon
 from hotswap import Hotswap
@@ -215,6 +216,7 @@ class StreamHandler(tornado.web.RequestHandler):
                 self.set_header("Content-Type", "audio/mpeg")
                 self.url = "%s:%s/all.mp3" % (url, port)
                 self.relays.append(self)
+                emit("relays", {"count": len(self.relays)})
             else:
                 if self.request.host.startswith("localhost"):
                     log.info("Added new debug listener at %s.", ip)
@@ -257,10 +259,11 @@ class StreamHandler(tornado.web.RequestHandler):
                 else:
                     raise NotImplementedError()
                 SocketHandler.on_listener_change(self.listeners)
+                emit("listeners", {"count": len(self.listeners)})
             else:
                 tornado.web.RequestHandler.send_error(self, 403)
         except:
-            log.error("Error in stream.get:\n%s", traceback.format_exc())
+            log.error("Error in stream.post:\n%s", traceback.format_exc())
             tornado.web.RequestHandler.send_error(self, 500)
 
     def on_finish(self):
@@ -268,6 +271,7 @@ class StreamHandler(tornado.web.RequestHandler):
             self.relays.remove(self)
             ip = self.request.headers.get('X-Real-Ip', self.request.remote_ip)
             log.info("Removed relay at %s with weight %d.", ip, self.weight)
+            emit("relays", {"count": len(self.relays)})
 
 
 class SocketConnection(tornadio2.conn.SocketConnection):

@@ -8,6 +8,7 @@ import difflib
 import logging
 import traceback
 import soundcloud
+from cube import emit
 from timer import Timer
 from requests import HTTPError
 from database import Database
@@ -240,6 +241,7 @@ def generate():
                         time.sleep(wait)
 
             log.info("Got %d tracks in %2.2fms.", len(tracks), t.ms)
+            emit('tracks_fetch', {"count": len(tracks), "ms": t.ms})
 
             if last and not any([t.id == last[-1].id for t in tracks]):
                 tracks.append(last[-1])
@@ -256,6 +258,7 @@ def generate():
             with Timer() as t:
                 tracks = [tracks[i] for i in tsp.solve(tracks, distance, len(tracks) * config.tsp_mult)]
             log.info("Solved TSP in %2.2fms.", t.ms)
+            emit('tsp_solve', {"count": len(tracks), "ms": t.ms})
 
             for track in tracks:
                 for criterion in criteria:
@@ -267,7 +270,9 @@ def generate():
 
             for track in tracks:
                 for priority in get_immediate_tracks(d):
+                    emit('decide_priority')
                     yield priority
+                emit('decide_normal')
                 yield track
 
             last = tracks
