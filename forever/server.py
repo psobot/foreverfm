@@ -162,7 +162,7 @@ class StreamHandler(tornado.web.RequestHandler):
     @classmethod
     def relay_url(cls):
         if len(cls.relays) == 1:
-            return cls.relays[0]
+            return cls.relays[0].url
         elif len(cls.relays) > 1:
             choices = [relay for relay in cls.relays for _ in xrange(0, relay.weight)]
             return random.choice(choices).url
