@@ -252,10 +252,13 @@ class StreamHandler(tornado.web.RequestHandler):
                         "relay": url,
                     })
                 elif action == "remove":
-                    listener = next(x for x in self.listeners if x['ip'] == ip)
-                    self.listeners.remove(listener)
-                    log.info("Removed listener at %s through %s:%s.",
-                             ip, url, port)
+                    try:
+                        listener = next(x for x in self.listeners if x['ip'] == ip)
+                        self.listeners.remove(listener)
+                        log.info("Removed listener at %s through %s:%s.",
+                                 ip, url, port)
+                    except StopIteration:
+                        pass
                 else:
                     raise NotImplementedError()
                 SocketHandler.on_listener_change(self.listeners)
