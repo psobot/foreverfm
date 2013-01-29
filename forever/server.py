@@ -232,43 +232,6 @@ class StreamHandler(tornado.web.RequestHandler):
             log.error("Error in stream.get:\n%s", traceback.format_exc())
             tornado.web.RequestHandler.send_error(self, 500)
 
-    def post(self):
-        try:
-            ua = self.request.headers.get('User-Agent', None)
-            if ua == config.relay_ua:
-                url = self.request.headers['X-Relay-Addr']
-                if not url.startswith('http://'):
-                    url = "http://" + url
-                port = self.request.headers['X-Relay-Port']
-                action = self.get_argument('action')
-                ip = self.get_argument('listener_ip')
-
-                if action == "add":
-                    log.info("Added listener at %s through %s:%s.",
-                             ip, url, port)
-                    self.listeners.append({
-                        "ip": ip,
-                        "connected_at": time.time(),
-                        "relay": url,
-                    })
-                elif action == "remove":
-                    try:
-                        listener = next(x for x in self.listeners if x['ip'] == ip)
-                        self.listeners.remove(listener)
-                        log.info("Removed listener at %s through %s:%s.",
-                                 ip, url, port)
-                    except StopIteration:
-                        pass
-                else:
-                    raise NotImplementedError()
-                SocketHandler.on_listener_change(self.listeners)
-                emit("listeners", {"count": len(self.listeners)})
-            else:
-                tornado.web.RequestHandler.send_error(self, 403)
-        except:
-            log.error("Error in stream.post:\n%s", traceback.format_exc())
-            tornado.web.RequestHandler.send_error(self, 500)
-
     def on_finish(self):
         if self in self.relays:
             self.relays.remove(self)
@@ -312,7 +275,6 @@ if __name__ == "__main__":
     Hotswap(MonitorSocket.update,
             statistician, 'generate',
             lambda: StreamHandler.relays,
-            lambda: StreamHandler.listeners,
             InfoHandler.stats,
             mp3_queue=v2_queue).start()
 
