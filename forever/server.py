@@ -309,6 +309,7 @@ if __name__ == "__main__":
     Hotswap(MonitorSocket.update,
             statistician, 'generate',
             lambda: StreamHandler.relays,
+            lambda: StreamHandler.listeners,
             InfoHandler.stats,
             mp3_queue=v2_queue).start()
 

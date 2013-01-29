@@ -1,6 +1,5 @@
 import sys
 import time
-import lame
 import Queue
 import config
 import logging
@@ -17,9 +16,7 @@ class Listeners(list):
         self.queue = queue
         self.__name = name
         self.__packet = None
-        self.__last_send = None
         self.__first_send = None
-        self.__lag = 0
         self.__count = 0L
         self.__drift_limit = config.drift_limit
         self.__semaphore = semaphore
@@ -34,42 +31,20 @@ class Listeners(list):
     def broadcast(self):
         try:
             now = time.time()
-            if self.__lag > LAG_LIMIT:
-                log.error("Lag (%s) exceeds limit - dropping frames!",
-                          self.__lag)
-                self.__lag = 0
-
             self.__broadcast()
-            if self.__last_send:
-                self.__lag += int((now - self.__last_send) * 44100)\
-                                - lame.SAMPLES_PER_FRAME
-            else:
+            if not self.__first_send:
                 log.info("Sending first frame for %s.", self.__name)
                 self.__first_send = time.time()
                 self.__semaphore.release()
 
-            if self.__lag > 0:
-                log.warning("Queue %s lag detected. (%2.2f ms)",
-                            self.__name, (self.__lag * 1000.0 / 44100.0))
-                while self.__lag > 0 and not self.queue.empty():
-                    self.__broadcast()
-                    self.__lag -= lame.SAMPLES_PER_FRAME
-                log.warning("Queue %s lag compensated. Leading by %2.2f ms.",
-                            self.__name, (self.__lag *  -1000.0 / 44100.0))
-
-            self.__last_send = time.time()
-
             uptime = float(now - self.__first_send)
-            if self.__count > 0 and not self.__count % 19:
+            if self.__count > 0 and not self.__count % 30:
                 samples = self.__count * 1152
                 duration = float(self.__count) * 1152.0 / 44100.0
                 buffered = self.queue.buffered
                 emit('drift', {
                     'ms': (duration - uptime) * 1000.0,
                     'rate': (duration / uptime),
-                })
-                emit('lag', {
-                    'samples': self.__lag,
                 })
                 emit('buffered', {
                     'queue': self.__name,
@@ -88,7 +63,6 @@ class Listeners(list):
                 )
                 while (float(self.__count) * 1152.0 / 44100.0) < uptime:
                     self.__broadcast()
-
         except Queue.Empty:
             if self.__packet and not self.__starving:
                 self.__starving = True
