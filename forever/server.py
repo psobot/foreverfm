@@ -113,14 +113,15 @@ class InfoHandler(tornado.web.RequestHandler):
     def clean(cls):
         try:
             now = time.time()
-            log.info("Initiating clean at %d.", now)
             before = len(cls.actions)
             while cls.actions and cls.actions[0]['time'] \
                + cls.actions[0]['duration'] + config.past_played_buffer < now:
                 cls.actions.pop(0)
                 end = cls.actions[0]['time'] + cls.actions[0]['duration']
-                log.info("Removing action that ended at %d.", end)
-            log.info("Removed %d actions.", before - len(cls.actions))
+                log.info("Removing action that ended at %d (now is %d).",
+                         end, now)
+            if before - len(cls.actions) > 0:
+                log.info("Removed %d actions.", before - len(cls.actions))
         except:
             log.error("Error while cleaning up:\n%s", traceback.format_exc())
 
